@@ -241,6 +241,95 @@
   .addbtn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;border-radius:12px;
     background:rgba(255,255,255,.05);border:1.5px dashed var(--line);color:var(--gold-l);font-weight:800;font-size:14px;}
   .addbtn:active{background:rgba(255,255,255,.1);}
+
+  /* ---------- RANGS / SYSTÈME (Solo Leveling) ---------- */
+  :root{--sys:#54c8ff;--sys2:#7b7bff;}
+  .sys-hero{position:relative;text-align:center;padding:26px 18px 20px;margin-bottom:16px;border-radius:16px;
+    background:radial-gradient(120% 90% at 50% 0%,rgba(84,200,255,.16),rgba(10,20,40,.6) 60%),linear-gradient(180deg,#0a1730,#0a1226);
+    border:1px solid rgba(84,200,255,.35);box-shadow:0 0 30px rgba(84,200,255,.15),inset 0 0 30px rgba(84,200,255,.06);}
+  .sys-corner{position:absolute;width:16px;height:16px;border:2px solid var(--sys);opacity:.9;}
+  .sys-corner.tl{top:8px;left:8px;border-right:0;border-bottom:0;}
+  .sys-corner.tr{top:8px;right:8px;border-left:0;border-bottom:0;}
+  .sys-corner.bl{bottom:8px;left:8px;border-right:0;border-top:0;}
+  .sys-corner.br{bottom:8px;right:8px;border-left:0;border-top:0;}
+  .sys-tag{font-size:11px;letter-spacing:3px;color:var(--sys);font-weight:800;margin-bottom:14px;text-shadow:0 0 10px rgba(84,200,255,.6);}
+  .rank-badge{width:104px;height:104px;margin:0 auto 12px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-size:44px;font-weight:900;color:#fff;position:relative;
+    background:radial-gradient(circle at 50% 35%,rgba(255,255,255,.25),transparent 60%),var(--rk,#6b7a99);
+    border:3px solid rgba(255,255,255,.5);box-shadow:0 0 26px var(--rkglow,rgba(120,140,180,.7)),inset 0 -8px 18px rgba(0,0,0,.35);
+    animation:rankpulse 2.6s ease-in-out infinite;}
+  @keyframes rankpulse{0%,100%{box-shadow:0 0 22px var(--rkglow,rgba(120,140,180,.6)),inset 0 -8px 18px rgba(0,0,0,.35);}50%{box-shadow:0 0 40px var(--rkglow,rgba(120,140,180,.95)),inset 0 -8px 18px rgba(0,0,0,.35);}}
+  .rank-name{font-size:22px;font-weight:900;letter-spacing:.5px;}
+  .rank-title{font-size:13px;color:var(--sys);margin-top:2px;font-weight:600;text-shadow:0 0 8px rgba(84,200,255,.4);}
+  .xp-wrap{margin:16px auto 4px;max-width:420px;}
+  .xp-bar{height:12px;border-radius:8px;background:rgba(255,255,255,.08);overflow:hidden;border:1px solid rgba(84,200,255,.25);}
+  .xp-fill{height:100%;border-radius:8px;background:linear-gradient(90deg,var(--sys),var(--sys2));box-shadow:0 0 12px rgba(84,200,255,.7);transition:width .5s cubic-bezier(.2,.8,.2,1);}
+  .xp-txt{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);margin-top:5px;font-weight:700;}
+  .rank-stats{display:flex;gap:10px;margin-top:16px;}
+  .rank-stats>div{flex:1;background:rgba(0,0,0,.35);border:1px solid rgba(84,200,255,.18);border-radius:12px;padding:10px 6px;}
+  .rank-stats b{display:block;font-size:19px;color:#fff;}
+  .rank-stats span{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;}
+
+  .chall{display:flex;align-items:center;gap:11px;background:rgba(3,10,28,.55);border:1px solid var(--line2);
+    border-left:3px solid var(--sys);border-radius:12px;padding:11px 12px;margin-bottom:9px;}
+  .chall.once{border-left-color:var(--gold);}
+  .chall.claimed{opacity:.5;}
+  .chall .cbody{flex:1;min-width:0;}
+  .chall .cn{font-size:14px;font-weight:700;}
+  .chall .cd{font-size:11.5px;color:var(--muted);margin-top:1px;}
+  .chall .cxp{font-size:12px;font-weight:800;color:var(--sys);white-space:nowrap;}
+  .chall.once .cxp{color:var(--gold-l);}
+  .chall .cbtn{flex:0 0 auto;width:40px;height:40px;border-radius:10px;font-size:20px;font-weight:900;
+    background:linear-gradient(135deg,var(--sys),var(--sys2));color:#04121f;padding:0;box-shadow:0 4px 12px rgba(84,200,255,.3);}
+  .chall.once .cbtn{background:linear-gradient(135deg,var(--gold),#a9863f);color:#1a1305;}
+  .chall .cbtn.done{background:rgba(255,255,255,.12);color:#7fe0a0;box-shadow:none;}
+  .chall .creps{font-size:11px;color:var(--muted2);text-align:center;margin-top:2px;}
+  .chall .cdel{flex:0 0 auto;width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,.05);color:#ff8a80;font-size:13px;padding:0;}
+
+  .ladder-row{display:flex;align-items:center;gap:11px;padding:9px 6px;border-bottom:1px solid var(--line2);}
+  .ladder-row:last-child{border-bottom:0;}
+  .ladder-row.cur{background:rgba(84,200,255,.1);border-radius:8px;}
+  .ladder-row.locked{opacity:.45;}
+  .lr-badge{width:34px;height:34px;flex:0 0 34px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-size:14px;font-weight:900;color:#fff;background:var(--rk,#6b7a99);border:1.5px solid rgba(255,255,255,.4);}
+  .lr-body{flex:1;min-width:0;}
+  .lr-name{font-size:13.5px;font-weight:700;}
+  .lr-title{font-size:11px;color:var(--muted);}
+  .lr-xp{font-size:11.5px;color:var(--muted);font-weight:700;white-space:nowrap;}
+  .lr-cur{font-size:11px;color:var(--sys);font-weight:800;}
+
+  /* Level-up overlay */
+  .levelup{position:fixed;inset:0;z-index:200;display:none;align-items:center;justify-content:center;padding:24px;
+    background:radial-gradient(circle at 50% 50%,rgba(84,200,255,.15),rgba(2,6,16,.88));}
+  .levelup.show{display:flex;animation:lufade .3s ease;}
+  @keyframes lufade{from{opacity:0;}to{opacity:1;}}
+  .lu-win{position:relative;max-width:360px;width:100%;text-align:center;padding:30px 24px;border-radius:16px;
+    background:linear-gradient(180deg,#0a1836,#0a1024);border:1.5px solid var(--sys);
+    box-shadow:0 0 50px rgba(84,200,255,.4),inset 0 0 30px rgba(84,200,255,.08);animation:lupop .4s cubic-bezier(.2,1.4,.4,1);}
+  @keyframes lupop{from{transform:scale(.7);opacity:0;}to{transform:scale(1);opacity:1;}}
+  .lu-win .sys-corner{width:18px;height:18px;}
+  .lu-tag{font-size:11px;letter-spacing:3px;color:var(--sys);font-weight:800;text-shadow:0 0 10px rgba(84,200,255,.7);}
+  .lu-line{font-size:14px;color:#cfe6ff;margin:14px 0 10px;}
+  .lu-badge{width:96px;height:96px;margin:6px auto 10px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-size:40px;font-weight:900;color:#fff;background:radial-gradient(circle at 50% 35%,rgba(255,255,255,.28),transparent 60%),var(--rk,#6b7a99);
+    border:3px solid rgba(255,255,255,.55);box-shadow:0 0 34px var(--rkglow,rgba(120,140,180,.9));}
+  .lu-rank{font-size:24px;font-weight:900;}
+  .lu-title2{font-size:13px;color:var(--sys);margin-top:2px;}
+  .lu-close{margin-top:18px;background:linear-gradient(135deg,var(--sys),var(--sys2));color:#04121f;font-weight:800;padding:12px 26px;border-radius:11px;width:100%;}
+  .auto-miles{display:flex;flex-wrap:wrap;gap:7px;}
+  .amile{display:inline-flex;align-items:center;gap:5px;padding:6px 11px;border-radius:999px;font-size:12px;font-weight:700;
+    background:rgba(255,255,255,.05);border:1px solid var(--line2);color:var(--muted);}
+  .amile.on{background:rgba(84,200,255,.16);border-color:rgba(84,200,255,.4);color:#cfeeff;}
+  .amile b{font-weight:800;}
+  .chall .cbtn.auto{background:rgba(84,200,255,.14);color:var(--sys);box-shadow:none;font-size:14px;cursor:default;}
+  .gate-card{border-color:rgba(230,178,77,.45)!important;background:linear-gradient(180deg,#1c1533,#120e22)!important;box-shadow:0 0 26px rgba(230,178,77,.12);}
+  .gate-target{font-size:12px;color:var(--gold-l);font-weight:800;text-transform:uppercase;letter-spacing:.6px;}
+  .gate-req{margin:9px 0 11px;padding:13px 15px;border-radius:12px;background:rgba(255,90,77,.09);border:1px solid rgba(255,90,77,.32);
+    font-size:16px;font-weight:800;color:#ffd7d2;line-height:1.35;}
+  .gate-cond{display:flex;gap:8px;flex-wrap:wrap;}
+  .gate-cond .gc{font-size:12px;font-weight:800;padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.06);color:var(--muted);}
+  .gate-cond .gc.ok{background:rgba(34,197,94,.16);color:#7fe0a0;}
+  .lr-gate{font-size:10.5px;color:#ffb36b;font-weight:700;}
 </style>
 </head>
 <body>
@@ -271,6 +360,7 @@
     <button class="navbtn" data-tab="courses"><span class="ic">🛒</span> Courses</button>
     <button class="navbtn" data-tab="docs"><span class="ic">📁</span> Documents</button>
     <button class="navbtn" data-tab="animes"><span class="ic">🍥</span> Animes</button>
+    <button class="navbtn" data-tab="rangs"><span class="ic">⚔️</span> Rangs</button>
     <button class="navbtn" data-tab="reglages"><span class="ic">⚙️</span> Réglages</button>
   </div>
 </nav>
@@ -423,6 +513,97 @@
   </div>
 </div>
 
+<!-- ============================= RANGS (SYSTÈME) ============================= -->
+<div class="tab" id="tab-rangs">
+  <div class="wrap">
+    <div class="sys-hero" id="rankHero">
+      <div class="sys-corner tl"></div><div class="sys-corner tr"></div><div class="sys-corner bl"></div><div class="sys-corner br"></div>
+      <div class="sys-tag">⟦ SYSTÈME ⟧</div>
+      <div class="rank-badge" id="rankBadge"><span id="rankShort">E</span></div>
+      <div class="rank-name" id="rankName">Rang E-V</div>
+      <div class="rank-title" id="rankTitle">Éveillé de bas niveau</div>
+      <div class="xp-wrap">
+        <div class="xp-bar"><div class="xp-fill" id="xpFill"></div></div>
+        <div class="xp-txt"><span id="xpNow">0 XP</span><span id="xpNext">→ 40 XP</span></div>
+      </div>
+      <div class="rank-stats">
+        <div><b id="statXP">0</b><span>XP total</span></div>
+        <div><b id="statDone">0</b><span>Défis réussis</span></div>
+        <div><b id="statRankNum">1</b><span>Rang / <span id="statRankTot">40</span></span></div>
+      </div>
+    </div>
+
+    <div class="card gate-card hide" id="gateCard">
+      <h2><span class="dot red"></span>🚪 Objectif de palier</h2>
+      <p class="sub">Pour franchir un palier, il te faut l'XP <b>ET</b> réussir ce défi. Il devient plus dur à chaque palier.</p>
+      <div class="gate-target" id="gateTarget"></div>
+      <div class="gate-req" id="gateReq"></div>
+      <div class="gate-cond" id="gateCond"></div>
+      <button class="btn" id="gateValidate" style="margin-top:12px;">✅ J'ai réussi ce défi de palier</button>
+    </div>
+
+    <div class="card" style="border-color:rgba(84,200,255,.28);">
+      <h2><span class="dot" style="background:var(--sys);box-shadow:0 0 0 3px rgba(84,200,255,.18);"></span>🔗 Objectifs automatiques</h2>
+      <p class="sub">Ces défis se valident <b>tout seuls</b> quand tu utilises l'onglet Sport (séances cochées, pesées, test VMA, perte de poids). L'XP tombe sans rien faire de plus.</p>
+      <div class="grid3" style="margin-bottom:12px;">
+        <div class="stat"><div class="lbl">XP automatique</div><div class="val" style="color:var(--sys);" id="autoXP">0</div></div>
+        <div class="stat"><div class="lbl">Séances validées</div><div class="val white-t" id="autoSess">0</div></div>
+        <div class="stat"><div class="lbl">Pesées</div><div class="val white-t" id="autoWeigh">0</div></div>
+      </div>
+      <div id="autoMiles" class="auto-miles"></div>
+      <p class="note" id="autoHint" style="margin-top:12px;"></p>
+    </div>
+
+    <div class="card" style="border-color:rgba(249,115,22,.32);">
+      <h2><span class="dot" style="background:#f97316;box-shadow:0 0 0 3px rgba(249,115,22,.18);"></span>🚶 Mes pas <span class="pill" id="stepSrcPill" style="background:rgba(249,115,22,.16);color:#f9a24a;margin-left:auto;">manuel</span></h2>
+      <p class="sub">Tes pas remontent de <b>Santé</b> via le Raccourci Apple (voir l'onglet <b>Réglages ⚙️</b>), du bouton <b>Coller</b>, ou à la main. Les objectifs se valident <b>tout seuls</b>.</p>
+      <div class="grid3" style="margin-bottom:14px;">
+        <div class="stat"><div class="lbl">Pas aujourd'hui</div><div class="val" style="color:#f9a24a;" id="stepToday">—</div><div class="sub" id="stepGoalSub">objectif 10 000</div></div>
+        <div class="stat"><div class="lbl">Série ≥ 10k</div><div class="val white-t" id="stepStreak">0</div><div class="sub">jours d'affilée</div></div>
+        <div class="stat"><div class="lbl">Total cumulé</div><div class="val white-t" id="stepTotal">0</div><div class="sub">pas au total</div></div>
+      </div>
+      <div class="xp-wrap" style="margin:0 0 14px;">
+        <div class="xp-bar" style="border-color:rgba(249,115,22,.3);"><div class="xp-fill" id="stepDayFill" style="background:linear-gradient(90deg,#f97316,#fbbf24);box-shadow:0 0 12px rgba(249,115,22,.6);width:0;"></div></div>
+        <div class="xp-txt"><span id="stepDayNow">0 pas</span><span id="stepDayGoal">/ 10 000</span></div>
+      </div>
+      <div class="row" style="align-items:flex-end;">
+        <div style="flex:1;min-width:120px;"><label>Saisir mes pas du jour</label><input type="number" id="stepInput" min="0" max="120000" placeholder="ex : 8213" inputmode="numeric"></div>
+        <button class="btn small gold" id="stepSave" style="flex:0 0 auto;">Valider</button>
+        <button class="btn small ghost" id="stepPaste" style="flex:0 0 auto;">📋 Coller</button>
+      </div>
+      <div id="stepMiles" class="auto-miles" style="margin-top:14px;"></div>
+      <details style="margin-top:14px;border-top:1px solid var(--line2);padding-top:10px;">
+        <summary style="cursor:pointer;font-size:13px;color:var(--gold-l);font-weight:700;list-style:none;">⚙️ Synchro auto (webhook N8N) <span id="stepSyncPill" class="pill" style="background:rgba(255,255,255,.07);color:var(--muted);margin-left:4px;">off</span></summary>
+        <div style="margin-top:10px;">
+          <p class="note" style="font-size:12px;margin-bottom:6px;">Colle l'URL de ton webhook N8N (GET). Le Hub récupère tes pas tout seul à chaque ouverture.</p>
+          <label>URL du webhook</label>
+          <input type="text" id="stepUrl" placeholder="https://ton-n8n.../webhook/pas" style="font-size:14px;" autocapitalize="off" autocorrect="off" spellcheck="false">
+          <div class="row" style="margin-top:8px;">
+            <button class="btn small ghost" id="stepUrlSave" style="flex:0 0 auto;">💾 Enregistrer</button>
+            <button class="btn small gold" id="stepSyncNow" style="flex:0 0 auto;">🔄 Synchroniser</button>
+          </div>
+          <p class="note" id="stepSyncStatus" style="margin-top:8px;font-size:12px;color:var(--muted2);"></p>
+        </div>
+      </details>
+    </div>
+
+    <div class="section-title" style="margin-top:6px;">⚡ Défis quotidiens <span style="text-transform:none;color:var(--muted);font-weight:500;">— à cocher toi-même, rejouables</span></div>
+    <div id="challDaily"></div>
+
+    <div class="section-title">👑 Quêtes uniques <span style="text-transform:none;color:var(--muted);font-weight:500;">— gros XP, une seule fois</span></div>
+    <div id="challOnce"></div>
+
+    <button class="addbtn" id="addChallBtn">＋ Créer mon propre défi</button>
+
+    <div class="card" style="margin-top:16px;">
+      <h2 style="cursor:pointer;" id="ladderToggle"><span class="dot"></span>🗼 Échelle des rangs <span class="pill mut" id="ladderCount" style="margin-left:auto;">▾</span></h2>
+      <div id="ladderList" class="hide"></div>
+    </div>
+
+    <button class="btn danger small" id="resetRank" style="width:auto;">↺ Réinitialiser ma progression</button>
+  </div>
+</div>
+
 <!-- ============================= REGLAGES ============================= -->
 <div class="tab" id="tab-reglages">
   <div class="wrap">
@@ -433,6 +614,30 @@
         2. Touche le bouton <b>Partager</b> (le carré avec la flèche ↑).<br>
         3. Descends et touche <b>« Sur l'écran d'accueil »</b> → <b>Ajouter</b>.<br>
         4. Ouvre l'appli <b>depuis sa nouvelle icône</b> 🔴🔵 — indispensable pour les notifications (règle Apple, iOS 16.4+).
+      </p>
+    </div>
+
+    <div class="card" style="border-color:rgba(249,115,22,.32);">
+      <h2><span class="dot" style="background:#f97316;box-shadow:0 0 0 3px rgba(249,115,22,.18);"></span>🚶 Connecter mes pas (Santé) <span class="pill" style="background:rgba(249,115,22,.16);color:#f9a24a;margin-left:6px;">auto</span></h2>
+      <p class="note" style="line-height:1.7;">
+        Une app web ne peut <b>pas</b> lire directement le podomètre de l'iPhone. La méthode fiable : un <b>Raccourci Apple</b> qui lit tes pas dans <b>Santé</b> et te les envoie ici. Deux façons, la plus simple d'abord.
+      </p>
+      <p class="note" style="margin-top:12px;"><b style="color:var(--gold-l);">① Le plus fiable — bouton « 📋 Coller »</b></p>
+      <p class="note" style="line-height:1.8;">
+        Crée un Raccourci nommé <b>« Mes pas »</b> :<br>
+        1. Action <b>« Rechercher des échantillons de santé »</b> → Type <b>Nombre de pas</b>, Période <b>Aujourd'hui</b>, <b>Total</b>.<br>
+        2. Action <b>« Copier dans le presse-papier »</b> (la valeur des pas).<br>
+        Ensuite : lance le Raccourci → ouvre ton Hub → onglet <b>Rangs</b> → touche <b>« 📋 Coller »</b>. L'XP tombe. Marche même en app installée. ✅
+      </p>
+      <p class="note" style="margin-top:12px;"><b style="color:var(--gold-l);">② Full auto — ouverture directe</b></p>
+      <p class="note" style="line-height:1.8;">
+        Ajoute une 3ᵉ action <b>« Ouvrir les URL »</b> avec :<br>
+        <code style="background:rgba(0,0,0,.4);padding:2px 6px;border-radius:6px;font-size:12px;">…/index.html?pas=<b>[Nombre de pas]</b></code><br>
+        (remplace <code>…</code> par l'adresse de ton Hub, et insère la variable des pas). Le Hub lit le chiffre tout seul à l'ouverture.<br>
+        Puis <b>Automatisation</b> → <b>Heure de la journée</b> (ex : 22h00) → exécute « Mes pas » chaque soir. 🔁
+      </p>
+      <p class="note" style="margin-top:10px;color:var(--muted2);font-size:12px;line-height:1.6;">
+        ⚠️ Sur iPhone, une URL ouverte par un Raccourci s'ouvre dans <b>Safari</b>, pas dans l'app installée (stockage séparé). Si le chiffre n'apparaît pas dans l'app icône, utilise la méthode ① <b>Coller</b> — elle marche partout.
       </p>
     </div>
 
@@ -470,6 +675,18 @@
   <div class="sheet" id="sheet"></div>
 </div>
 
+<div class="levelup" id="levelup">
+  <div class="lu-win">
+    <div class="sys-corner tl"></div><div class="sys-corner tr"></div><div class="sys-corner bl"></div><div class="sys-corner br"></div>
+    <div class="lu-tag">⟦ NOTIFICATION ⟧</div>
+    <div class="lu-line" id="luLine">Vous êtes monté en rang.</div>
+    <div class="lu-badge" id="luBadge">D</div>
+    <div class="lu-rank" id="luRank">Rang D-V</div>
+    <div class="lu-title2" id="luTitle">Chasseur novice</div>
+    <button class="lu-close" id="luClose">Accepter</button>
+  </div>
+</div>
+
 <div class="flash" id="flash">Enregistré ✓</div>
 
 <!-- app payloads (base64, décodés au runtime pour préserver tes apps à l'identique) -->
@@ -503,6 +720,7 @@ document.querySelectorAll(".navbtn").forEach(b=>{
     b.scrollIntoView({inline:"center",block:"nearest",behavior:"smooth"});
     window.scrollTo({top:0,behavior:"instant"});
     if(t==="sport"||t==="todo")loadFrame(t);
+    if(t==="rangs")syncRangs();
   });
 });
 
@@ -1121,6 +1339,428 @@ function makeAnimeICS(id){
    La bannière d'alerte en haut de l'onglet Animes reste un rappel visuel quand l'app est ouverte. */
 
 /* =================================================================
+   RANGS — SYSTÈME (façon Solo Leveling)
+   ================================================================= */
+function thr(i){return Math.round(50*Math.pow(i,2.15));}
+// Portes de palier : XP requise ET défi physique réussi. Indexées sur le rang d'ENTRÉE du palier.
+const GATES={
+  5 :{id:"g_d",  label:"10 pompes strictes d'affilée"},
+  10:{id:"g_c",  label:"25 pompes strictes d'affilée"},
+  15:{id:"g_b",  label:"40 pompes d'affilée + 8 tractions strictes"},
+  20:{id:"g_a",  label:"Gainage planche 2 min + 12 tractions strictes"},
+  25:{id:"g_s",  label:"Courir 10 km en moins de 50 min"},
+  30:{id:"g_sp", label:"60 pompes en une seule série"},
+  31:{id:"g_ss", label:"20 tractions strictes d'affilée"},
+  32:{id:"g_ssp",label:"Courir 5 km en moins de 24 min"},
+  33:{id:"g_sss",label:"100 pompes en une série"},
+  34:{id:"g_sssp",label:"Semi-marathon : 21 km"},
+  35:{id:"g_nat",label:"30 tractions strictes d'affilée"},
+  36:{id:"g_mar",label:"Réussir un muscle-up propre"},
+  37:{id:"g_mon",label:"Courir un marathon : 42,195 km"},
+  38:{id:"g_sov",label:"10 muscle-ups d'affilée"},
+  39:{id:"g_mob",label:"Gainage planche 5 min + 40 tractions"},
+  40:{id:"g_abs",label:"1 an de régularité totale, sans jamais lâcher"}
+};
+const RTIERS=[
+  {g:"E",c:"#6b7a99",glow:"rgba(120,140,180,.7)",t:"Éveillé de bas niveau"},
+  {g:"D",c:"#3fbf6f",glow:"rgba(63,191,111,.7)",t:"Chasseur novice"},
+  {g:"C",c:"#3f8fff",glow:"rgba(63,143,255,.7)",t:"Chasseur confirmé"},
+  {g:"B",c:"#a06bff",glow:"rgba(160,107,255,.75)",t:"Chasseur d'élite"},
+  {g:"A",c:"#e6b24d",glow:"rgba(230,178,77,.8)",t:"Chasseur de rang A"},
+  {g:"S",c:"#ff5a4d",glow:"rgba(255,90,77,.85)",t:"Chasseur de rang S"}
+];
+const DIVS=["V","IV","III","II","I"];
+const TOP=[
+  {n:"Rang S+",s:"S+",c:"#ff7a3d",glow:"rgba(255,122,61,.85)",t:"Chasseur surpuissant"},
+  {n:"Rang SS",s:"SS",c:"#ff5ea8",glow:"rgba(255,94,168,.85)",t:"Chasseur légendaire"},
+  {n:"Rang SS+",s:"SS+",c:"#e05aff",glow:"rgba(224,90,255,.85)",t:"Chasseur mythique"},
+  {n:"Rang SSS",s:"SSS",c:"#9b6bff",glow:"rgba(155,107,255,.9)",t:"Chasseur national"},
+  {n:"Rang SSS+",s:"SSS+",c:"#6b9bff",glow:"rgba(107,155,255,.9)",t:"Souverain en devenir"},
+  {n:"Chasseur National",s:"★",c:"#54c8ff",glow:"rgba(84,200,255,.9)",t:"Arme humaine vivante"},
+  {n:"Maréchal de l'Ombre",s:"✦",c:"#7b7bff",glow:"rgba(123,123,255,.95)",t:"Commandant des ombres"},
+  {n:"Monarque",s:"♛",c:"#b06bff",glow:"rgba(176,107,255,1)",t:"Roi qui règne"},
+  {n:"Souverain",s:"♛",c:"#e0b0ff",glow:"rgba(224,176,255,1)",t:"Au-dessus des rois"},
+  {n:"Monarque de l'Ombre",s:"👑",c:"#c0c8ff",glow:"rgba(192,200,255,1)",t:"Celui qui commande la mort"},
+  {n:"Absolu",s:"∞",c:"#ffffff",glow:"rgba(255,255,255,1)",t:"Le Souverain Suprême"}
+];
+const RANKS=[];
+(function(){let i=0;
+  RTIERS.forEach(tr=>DIVS.forEach(dv=>{RANKS.push({name:"Rang "+tr.g+"-"+dv,short:tr.g,title:tr.t,color:tr.c,glow:tr.glow,xp:thr(i),gate:GATES[i]||null});i++;}));
+  TOP.forEach(tp=>{RANKS.push({name:tp.n,short:tp.s,title:tp.t,color:tp.c,glow:tp.glow,xp:thr(i),gate:GATES[i]||null});i++;});
+})();
+
+// Défis MANUELS (impossibles à vérifier depuis les données) — à cocher soi-même
+const DAILY=[
+  {id:"d_sommeil",n:"8 h de sommeil",d:"Récupération = progression",xp:15},
+  {id:"d_prot",n:"Objectif protéines atteint",d:"",xp:15},
+  {id:"d_nosucre",n:"Journée sans sucre ajouté",d:"",xp:15},
+  {id:"d_eau",n:"2 L d'eau bus",d:"",xp:10},
+  {id:"d_etir",n:"10 min d'étirements",d:"",xp:10}
+];
+const ONCE=[
+  {id:"o_5km",n:"Courir 5 km sans t'arrêter",d:"",xp:180},
+  {id:"o_tractions",n:"10 tractions strictes d'affilée",d:"",xp:150},
+  {id:"o_10km",n:"Courir 10 km",d:"",xp:350},
+  {id:"o_abdos",n:"Premiers abdos visibles",d:"",xp:400},
+  {id:"o_poids",n:"Objectif de poids personnel atteint",d:"Le boss final",xp:600}
+];
+// Jalons AUTOMATIQUES — crédités depuis les données de l'app Sport
+const AUTO_MILE=[
+  {k:"week1",label:"1ʳᵉ semaine",xp:100},
+  {k:"month1",label:"1 mois (4 sem.)",xp:300},
+  {k:"week8",label:"8 semaines",xp:400},
+  {k:"week12",label:"3 mois (12 sem.)",xp:700},
+  {k:"vma",label:"Test VMA fait",xp:120},
+  {k:"run10",label:"10 sorties course",xp:200},
+  {k:"lose1",label:"−1 kg",xp:100},
+  {k:"lose3",label:"−3 kg",xp:250},
+  {k:"lose5",label:"−5 kg",xp:500},
+  {k:"lose10",label:"−10 kg",xp:900}
+];
+// Jalons PAS — crédités depuis les pas remontés (Raccourci Santé, Coller ou saisie manuelle)
+const STEP_GOAL=10000;
+const STEP_MILE=[
+  {k:"pasrun3", label:"3 j ≥10k d'affilée",  xp:80},
+  {k:"pasrun7", label:"7 j ≥10k d'affilée",  xp:200},
+  {k:"pasrun14",label:"14 j ≥10k d'affilée", xp:350},
+  {k:"pasrun30",label:"30 j ≥10k d'affilée", xp:700},
+  {k:"pas100ksem",label:"100k en 7 jours",   xp:150},
+  {k:"pastot100k",label:"100k cumulés",       xp:80},
+  {k:"pastot500k",label:"500k cumulés",       xp:200},
+  {k:"pastot1M", label:"1 M cumulés",         xp:500},
+  {k:"pastot3M", label:"3 M cumulés",         xp:1200}
+];
+const K_STEPS="hub_steps_v1";
+const K_STEPS_URL="hub_steps_url";
+function getSteps(){return LS.get(K_STEPS,{})||{};}
+function saveSteps(o){LS.set(K_STEPS,o);}
+// Récupère les pas depuis le webhook N8N (GET) — fiable, fond, multi-appareils. Retourne le nb de jours mis à jour.
+async function fetchSteps(manual){
+  const url=(LS.get(K_STEPS_URL,"")||"").trim();
+  const st=$("stepSyncStatus");
+  if(!url){if(manual&&st)st.textContent="⚠️ Renseigne l'URL du webhook d'abord.";return 0;}
+  if(st)st.textContent="⏳ Synchro en cours…";
+  try{
+    const r=await fetch(url,{method:"GET",cache:"no-store"});
+    if(!r.ok)throw new Error("HTTP "+r.status);
+    const data=await r.json();
+    const src=(data&&data.steps)?data.steps:data;   // accepte {steps:{...}} ou {"2026-07-14":8213}
+    let added=0;
+    Object.keys(src||{}).forEach(d=>{const n=parseInt(src[d],10);if(!isNaN(n)&&n>0){const S=getSteps();const before=+S[d]||0;setStepsForDay(d,n,"max");if((getSteps()[d]||0)>before)added++;}});
+    if(st)st.textContent="✅ Synchro OK à "+new Date().toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})+(added?" — "+added+" jour(s) mis à jour":" — déjà à jour");
+    return added;
+  }catch(e){
+    if(st)st.textContent="⚠️ Échec : "+e.message+". Vérifie l'URL, le HTTPS, et l'en-tête CORS (Access-Control-Allow-Origin: *).";
+    return 0;
+  }
+}
+// Enregistre les pas d'un jour. mode "max" (auto/coller) ne baisse jamais ; "set" (manuel) écrase.
+function setStepsForDay(d,n,mode){
+  n=parseInt(n,10);if(isNaN(n)||n<0)return false;
+  const S=getSteps();
+  S[d]=(mode==="set")?n:Math.max(+S[d]||0,n);
+  saveSteps(S);return true;
+}
+// Lit ?pas=XXXX (&date=YYYY-MM-DD) déposé par le Raccourci Apple, puis nettoie l'URL. Idempotent.
+function ingestSteps(){
+  try{
+    const p=new URLSearchParams(location.search);
+    const raw=p.get("pas")||p.get("steps");
+    if(raw==null)return 0;
+    const n=parseInt(raw,10);if(isNaN(n)||n<0)return 0;
+    const d=p.get("date")||todayISO();
+    setStepsForDay(d,n,"max");
+    try{history.replaceState(null,"",location.pathname+location.hash);}catch(e){}
+    return n;
+  }catch(e){return 0;}
+}
+// Plus longue série de jours calendaires consécutifs atteignant le seuil.
+function bestStepStreak(S,thr){
+  const days=Object.keys(S).filter(d=>(+S[d])>=thr).sort();
+  let best=0,cur=0,prev=null;
+  days.forEach(d=>{
+    if(prev){const diff=Math.round((new Date(d+"T00:00:00")-new Date(prev+"T00:00:00"))/86400000);cur=(diff===1)?cur+1:1;}
+    else cur=1;
+    if(cur>best)best=cur;prev=d;
+  });
+  return best;
+}
+// Meilleure somme sur une fenêtre glissante de 7 jours calendaires.
+function bestStep7(S){
+  const days=Object.keys(S).sort();let max=0;
+  days.forEach(end=>{
+    const e=new Date(end+"T00:00:00");let sum=0;
+    for(let i=0;i<7;i++){const dt=new Date(e);dt.setDate(e.getDate()-i);sum+=(+S[dt.toISOString().slice(0,10)]||0);}
+    if(sum>max)max=sum;
+  });
+  return max;
+}
+const K_RANK="hub_rank_v1";
+let RS=LS.get(K_RANK,null)||{xp:0,once:{},daily:{},done:0,custom:[],autoXP:0,creditedKeys:{},gates:{}};
+if(!RS.creditedKeys)RS.creditedKeys={}; if(RS.autoXP==null)RS.autoXP=0; if(!RS.gates)RS.gates={};
+function saveRS(){LS.set(K_RANK,RS);}
+function readLS(key,def){try{const v=localStorage.getItem(key);return v?JSON.parse(v):def;}catch(e){return def;}}
+
+// Lit les données de l'app Sport (même origine) et crédite l'XP des objectifs atteints — idempotent.
+function autoSync(){
+  let gained=0;
+  const credit=(key,xp)=>{if(!RS.creditedKeys[key]){RS.creditedKeys[key]=true;RS.xp+=xp;RS.autoXP+=xp;RS.done++;gained+=xp;}};
+  // Pesées (datées) : +5 XP chacune
+  const W=readLS("cf_weights",[])||[];
+  W.forEach(w=>{if(w&&w.d)credit("weigh:"+w.d,5);});
+  // Perte de poids (1ʳᵉ pesée → dernière)
+  if(W.length>=2){
+    const loss=(+W[0].p)-(+W[W.length-1].p);
+    [["lose1",1,100],["lose3",3,250],["lose5",5,500],["lose10",10,900]].forEach(([k,kg,xp])=>{if(loss>=kg)credit(k,xp);});
+  }
+  // Entraînement
+  const T=readLS("cf_train",null);
+  if(T&&T.prog){
+    const dayXP={_lun:25,_mer:25,_ven:25,_sam:25,_mar:20,_jeu:20};
+    Object.keys(dayXP).forEach(dk=>{const d=(T.current||{})[dk];if(d&&d.done)credit("sess:"+T.week+":"+dk,dayXP[dk]);});
+    const h=(T.history||[]).length;
+    [["week1",1,100],["month1",4,300],["week8",8,400],["week12",12,700]].forEach(([k,n,xp])=>{if(h>=n)credit(k,xp);});
+    const runs=(T.history||[]).filter(x=>x.km&&x.km!=="—"&&(+x.km)>0).length;
+    if(runs>=10)credit("run10",200);
+  }
+  // Test VMA
+  if(readLS("cf_vma",null))credit("vma",120);
+  // Tâches To-Do terminées : +10 XP chacune
+  const TD=readLS("todo_psg_mathieu_v1",[])||[];
+  TD.forEach(t=>{if(t&&t.statut==="done"&&t.id)credit("todo:"+t.id,10);});
+  // PAS — objectif quotidien + paliers (crédités depuis hub_steps_v1, idempotent par jour/clé)
+  const S=getSteps();const days=Object.keys(S);
+  days.forEach(d=>{
+    if((+S[d])>=STEP_GOAL)credit("pas10k:"+d,15);
+    if((+S[d])>=15000)credit("pas15k:"+d,8);
+  });
+  const totalSteps=days.reduce((s,d)=>s+(+S[d]||0),0);
+  [["pastot100k",100000,80],["pastot500k",500000,200],["pastot1M",1000000,500],["pastot3M",3000000,1200]]
+    .forEach(([k,n,xp])=>{if(totalSteps>=n)credit(k,xp);});
+  const streak=bestStepStreak(S,STEP_GOAL);
+  [["pasrun3",3,80],["pasrun7",7,200],["pasrun14",14,350],["pasrun30",30,700]]
+    .forEach(([k,n,xp])=>{if(streak>=n)credit(k,xp);});
+  if(bestStep7(S)>=100000)credit("pas100ksem",150);
+  if(gained>0)saveRS();
+  return gained;
+}
+function syncRangs(){
+  const before=rankIndex(RS.xp);
+  const g=autoSync();
+  const after=rankIndex(RS.xp);
+  renderRangs();
+  if(after>before)showLevelUp(after);
+  else if(g>0)flash("🔗 +"+g+" XP synchronisés depuis Sport");
+  // Récupération réseau des pas (webhook) en arrière-plan, puis re-crédit si nouveautés
+  fetchSteps().then(added=>{
+    if(added>0){const b2=rankIndex(RS.xp);autoSync();const a2=rankIndex(RS.xp);renderRangs();if(a2>b2)showLevelUp(a2);else flash("🚶 Pas synchronisés");}
+  });
+}
+function todayISO(){return new Date().toISOString().slice(0,10);}
+function rankIndex(xp){
+  let idx=0;
+  for(let i=1;i<RANKS.length;i++){
+    if(xp<RANKS[i].xp)break;                                   // pas assez d'XP
+    if(RANKS[i].gate && !(RS.gates||{})[RANKS[i].gate.id])break; // porte de palier non validée
+    idx=i;
+  }
+  return idx;
+}
+function nextGate(idx){
+  for(let i=idx+1;i<RANKS.length;i++){if(RANKS[i].gate && !(RS.gates||{})[RANKS[i].gate.id])return {i:i,rank:RANKS[i]};}
+  return null;
+}
+function allChalls(){
+  const cust=RS.custom||[];
+  return {
+    daily:[...DAILY,...cust.filter(c=>c.kind==="daily")],
+    once:[...ONCE,...cust.filter(c=>c.kind==="once")]
+  };
+}
+function grant(xp){
+  const before=rankIndex(RS.xp);
+  RS.xp+=xp; RS.done++;
+  const after=rankIndex(RS.xp);
+  saveRS(); renderRangs();
+  if(after>before) showLevelUp(after);
+  else flash("+"+xp+" XP ⚡");
+}
+function doDaily(id){
+  const c=allChalls().daily.find(x=>x.id===id);if(!c)return;
+  if(RS.daily[id]===todayISO())return;
+  RS.daily[id]=todayISO(); grant(c.xp);
+}
+function doOnce(id){
+  const c=allChalls().once.find(x=>x.id===id);if(!c)return;
+  if(RS.once[id])return;
+  RS.once[id]=true; grant(c.xp);
+}
+function showLevelUp(i){
+  const r=RANKS[i];
+  $("luBadge").textContent=r.short;$("luBadge").style.setProperty("--rk",r.color);$("luBadge").style.setProperty("--rkglow",r.glow);
+  $("luRank").textContent=r.name;$("luTitle").textContent=r.title;
+  $("luLine").innerHTML=i>=30?"Une puissance interdite s'éveille en toi…":"Tu as vaincu tes limites. Tu montes en rang.";
+  $("levelup").classList.add("show");
+}
+function renderRangs(){
+  const xp=RS.xp, idx=rankIndex(xp), r=RANKS[idx], next=RANKS[idx+1];
+  $("rankShort").textContent=r.short;
+  const bd=$("rankBadge");bd.style.setProperty("--rk",r.color);bd.style.setProperty("--rkglow",r.glow);
+  $("rankName").textContent=r.name;$("rankTitle").textContent=r.title;
+  $("statXP").textContent=xp.toLocaleString("fr-FR");
+  $("statDone").textContent=RS.done;
+  $("statRankNum").textContent=(idx+1);$("statRankTot").textContent=RANKS.length;
+  // carte auto
+  const ck=RS.creditedKeys||{};
+  const sessN=Object.keys(ck).filter(k=>k.indexOf("sess:")===0).length;
+  const weighN=Object.keys(ck).filter(k=>k.indexOf("weigh:")===0).length;
+  $("autoXP").textContent=(RS.autoXP||0).toLocaleString("fr-FR");
+  $("autoSess").textContent=sessN;
+  $("autoWeigh").textContent=weighN;
+  $("autoMiles").innerHTML=AUTO_MILE.map(m=>{const on=!!ck[m.k];return `<span class="amile ${on?"on":""}">${on?"✅":"🔒"} ${m.label} ${on?"":"<b>+"+m.xp+"</b>"}</span>`;}).join("");
+  const hasSport=readLS("cf_train",null)||readLS("cf_weights",[]).length;
+  $("autoHint").innerHTML=hasSport
+    ? "🔗 Mis à jour automatiquement. Coche tes séances et note tes pesées dans l'onglet <b>Sport</b> → l'XP arrive ici tout seul."
+    : "👉 Va d'abord utiliser l'onglet <b>Sport</b> (coche une séance, note une pesée) : tes objectifs se créditeront automatiquement ici.";
+  // ---- carte PAS ----
+  const S=getSteps();const sDays=Object.keys(S);
+  const todayS=+S[todayISO()]||0;
+  const totS=sDays.reduce((a,d)=>a+(+S[d]||0),0);
+  const strk=bestStepStreak(S,STEP_GOAL);
+  $("stepToday").textContent=todayS?todayS.toLocaleString("fr-FR"):"—";
+  $("stepStreak").textContent=strk;
+  $("stepTotal").textContent=totS.toLocaleString("fr-FR");
+  $("stepGoalSub").textContent=todayS>=STEP_GOAL?"✅ objectif atteint":"objectif "+STEP_GOAL.toLocaleString("fr-FR");
+  $("stepDayNow").textContent=todayS.toLocaleString("fr-FR")+" pas";
+  $("stepDayGoal").textContent="/ "+STEP_GOAL.toLocaleString("fr-FR");
+  $("stepDayFill").style.width=Math.max(2,Math.min(100,todayS/STEP_GOAL*100))+"%";
+  $("stepMiles").innerHTML=STEP_MILE.map(m=>{const on=!!ck[m.k];return `<span class="amile ${on?"on":""}">${on?"✅":"🔒"} ${m.label} ${on?"":"<b>+"+m.xp+"</b>"}</span>`;}).join("");
+  const srcPill=$("stepSrcPill");
+  if(sDays.length){srcPill.textContent="connecté";srcPill.style.background="rgba(34,197,94,.16)";srcPill.style.color="#7fe0a0";}
+  else{srcPill.textContent="à connecter";srcPill.style.background="rgba(249,115,22,.16)";srcPill.style.color="#f9a24a";}
+  const hasUrl=!!(LS.get(K_STEPS_URL,"")||"").trim(),syncPill=$("stepSyncPill");
+  if(syncPill){if(hasUrl){syncPill.textContent="auto";syncPill.style.background="rgba(34,197,94,.16)";syncPill.style.color="#7fe0a0";}else{syncPill.textContent="off";syncPill.style.background="rgba(255,255,255,.07)";syncPill.style.color="var(--muted)";}}
+  if(next){
+    const span=next.xp-r.xp, prog=xp-r.xp;
+    $("xpFill").style.width=Math.max(3,Math.min(100,prog/span*100))+"%";
+    $("xpNow").textContent=xp.toLocaleString("fr-FR")+" XP";
+    const gated=next.gate && !(RS.gates||{})[next.gate.id];
+    if(xp>=next.xp && gated) $("xpNext").textContent="🚪 Défi de palier à valider";
+    else $("xpNext").textContent=(next.xp-xp).toLocaleString("fr-FR")+" XP → "+next.name+(gated?" 🚪":"");
+  }else{
+    $("xpFill").style.width="100%";$("xpNow").textContent=xp.toLocaleString("fr-FR")+" XP";$("xpNext").textContent="RANG MAX 👑";
+  }
+  // Carte objectif de palier (prochaine porte non validée)
+  const ng=nextGate(idx);
+  if(ng){
+    $("gateCard").classList.remove("hide");
+    $("gateTarget").textContent="Pour atteindre : "+ng.rank.name;
+    $("gateReq").textContent="🎯 "+ng.rank.gate.label;
+    const xpReady=xp>=ng.rank.xp;
+    $("gateCond").innerHTML=`<span class="gc ${xpReady?"ok":""}">${xpReady?"✅ XP atteint":"XP : encore "+(ng.rank.xp-xp).toLocaleString("fr-FR")}</span><span class="gc">🎯 Défi à réussir</span>`;
+    $("gateValidate").dataset.gid=ng.rank.gate.id;
+  }else{ $("gateCard").classList.add("hide"); }
+  const C=allChalls();
+  const today=todayISO();
+  $("challDaily").innerHTML=C.daily.map(c=>{
+    const done=RS.daily[c.id]===today; const cust=(RS.custom||[]).some(x=>x.id===c.id);
+    return `<div class="chall ${done?"claimed":""}" data-id="${c.id}">
+      <div class="cbody"><div class="cn">${esc(c.n)}</div><div class="cd">${done?"✅ Réussi aujourd'hui — revient demain":(c.d?esc(c.d):"Rejouable chaque jour")}</div></div>
+      <div class="cxp">+${c.xp} XP</div>
+      <button class="cbtn ${done?"done":""}" data-act="dodaily" ${done?"disabled":""}>${done?"✓":"＋"}</button>
+      ${cust?`<button class="cdel" data-act="del">🗑️</button>`:""}
+    </div>`;}).join("");
+  $("challOnce").innerHTML=C.once.map(c=>{
+    const done=!!RS.once[c.id]; const cust=(RS.custom||[]).some(x=>x.id===c.id);
+    return `<div class="chall once ${done?"claimed":""}" data-id="${c.id}">
+      <div class="cbody"><div class="cn">${esc(c.n)}</div><div class="cd">${done?"👑 Accompli":(c.d?esc(c.d):"Défi unique")}</div></div>
+      <div class="cxp">+${c.xp} XP</div>
+      <button class="cbtn ${done?"done":""}" data-act="doonce" ${done?"disabled":""}>${done?"✓":"＋"}</button>
+      ${cust?`<button class="cdel" data-act="del">🗑️</button>`:""}
+    </div>`;}).join("");
+  document.querySelectorAll("#challDaily .chall,#challOnce .chall").forEach(el=>{
+    const id=el.dataset.id;
+    const b=el.querySelector('[data-act="dodaily"]');if(b)b.addEventListener("click",()=>doDaily(id));
+    const o=el.querySelector('[data-act="doonce"]');if(o)o.addEventListener("click",()=>doOnce(id));
+    const d=el.querySelector('[data-act="del"]');if(d)d.addEventListener("click",()=>{if(confirm("Supprimer ce défi ?")){RS.custom=RS.custom.filter(x=>x.id!==id);saveRS();renderRangs();}});
+  });
+  // échelle
+  $("ladderList").innerHTML=RANKS.map((rk,i)=>{
+    const cur=i===idx, locked=i>idx;
+    const gateOK=rk.gate?!!(RS.gates||{})[rk.gate.id]:null;
+    const gline=rk.gate?`<div class="lr-gate">🚪 ${gateOK?"✅ ":""}${esc(rk.gate.label)}</div>`:"";
+    return `<div class="ladder-row ${cur?"cur":""} ${locked?"locked":""}">
+      <div class="lr-badge" style="background:${rk.color}">${rk.short}</div>
+      <div class="lr-body"><div class="lr-name">${esc(rk.name)}${rk.gate?" 🚪":""}</div><div class="lr-title">${esc(rk.title)}</div>${gline}</div>
+      ${cur?'<div class="lr-cur">TOI ▸</div>':`<div class="lr-xp">${rk.xp.toLocaleString("fr-FR")} XP</div>`}
+    </div>`;}).join("");
+}
+$("gateValidate").addEventListener("click",()=>{
+  const gid=$("gateValidate").dataset.gid;if(!gid)return;
+  if(!confirm("Sois honnête 💪 — tu as VRAIMENT réussi ce défi de palier ?"))return;
+  const before=rankIndex(RS.xp);
+  RS.gates=RS.gates||{};RS.gates[gid]=true;saveRS();
+  const after=rankIndex(RS.xp);
+  renderRangs();
+  if(after>before)showLevelUp(after);
+  else flash("🗝️ Palier débloqué — accumule l'XP pour y monter");
+});
+$("addChallBtn").addEventListener("click",()=>{
+  openSheet(`
+    <button class="close-x" onclick="closeSheet()">✕</button>
+    <h3>Créer un défi</h3>
+    <label>Nom du défi</label><input type="text" id="ch_n" placeholder="Ex : 50 pompes">
+    <div class="row">
+      <div><label>Type</label><select id="ch_k"><option value="daily">Quotidien (rejouable)</option><option value="once">Unique (une fois)</option></select></div>
+      <div><label>XP gagné</label><input type="number" id="ch_xp" value="20" min="1" max="1000"></div>
+    </div>
+    <button class="btn" style="margin-top:16px;" onclick="saveChall()">Créer le défi</button>
+  `);
+});
+function saveChall(){
+  const n=$("ch_n").value.trim();if(!n){alert("Donne un nom au défi 😉");return;}
+  const xp=Math.max(1,parseInt($("ch_xp").value)||20);
+  RS.custom=RS.custom||[];RS.custom.push({id:"c_"+uid(),n,d:"Défi perso",xp,kind:$("ch_k").value});
+  saveRS();renderRangs();closeSheet();flash("Défi créé ⚔️");
+}
+$("ladderToggle").addEventListener("click",()=>{
+  const l=$("ladderList");l.classList.toggle("hide");
+  $("ladderCount").textContent=l.classList.contains("hide")?"▾":"▴";
+});
+$("luClose").addEventListener("click",()=>$("levelup").classList.remove("show"));
+$("levelup").addEventListener("click",e=>{if(e.target===$("levelup"))$("levelup").classList.remove("show");});
+$("resetRank").addEventListener("click",()=>{if(confirm("Réinitialiser toute ta progression de rang (XP, défis, paliers, synchro) ?")){RS={xp:0,once:{},daily:{},done:0,custom:[],autoXP:0,creditedKeys:{},gates:{}};saveRS();renderRangs();}});
+
+/* ---------- PAS : saisie manuelle + coller ---------- */
+$("stepSave").addEventListener("click",()=>{
+  const v=$("stepInput").value.trim();
+  if(v===""){flash("Entre un nombre de pas 😉");return;}
+  setStepsForDay(todayISO(),v,"set");
+  $("stepInput").value="";
+  syncRangs();
+});
+$("stepInput").addEventListener("keydown",e=>{if(e.key==="Enter")$("stepSave").click();});
+$("stepPaste").addEventListener("click",async()=>{
+  try{
+    const txt=await navigator.clipboard.readText();
+    const n=parseInt((txt||"").replace(/[^\d]/g,""),10);
+    if(isNaN(n)||n<=0){flash("Presse-papier vide ou invalide");return;}
+    setStepsForDay(todayISO(),n,"max");
+    syncRangs();
+    flash("🚶 "+n.toLocaleString("fr-FR")+" pas collés");
+  }catch(e){flash("Autorise l'accès au presse-papier");}
+});
+// URL webhook : préremplissage + enregistrement + synchro manuelle
+(function(){const u=$("stepUrl");if(u)u.value=LS.get(K_STEPS_URL,"")||"";})();
+$("stepUrlSave").addEventListener("click",()=>{
+  LS.set(K_STEPS_URL,$("stepUrl").value.trim());flash("URL enregistrée 💾");
+  fetchSteps(true).then(()=>{autoSync();renderRangs();});
+});
+$("stepSyncNow").addEventListener("click",()=>{
+  fetchSteps(true).then(added=>{autoSync();renderRangs();flash(added>0?"🚶 "+added+" jour(s) synchro":"À jour ✓");});
+});
+
+/* =================================================================
    MODAL HELPERS
    ================================================================= */
 function openSheet(html){$("sheet").innerHTML=html;$("overlay").classList.add("show");}
@@ -1138,6 +1778,11 @@ $("overlay").addEventListener("click",e=>{if(e.target===$("overlay"))closeSheet(
   renderDishes();renderPicker();renderShop();
   openDB().then(renderDocs).catch(()=>{$("docEmpty").classList.remove("hide");});
   renderAnimes();
+  const pasIn=ingestSteps();
+  autoSync();renderRangs();
+  if(pasIn>0){document.querySelector('.navbtn[data-tab="rangs"]').click();flash("🚶 "+pasIn.toLocaleString("fr-FR")+" pas synchronisés depuis Santé");}
+  // Récupération réseau des pas au démarrage (webhook N8N), silencieuse
+  fetchSteps().then(added=>{if(added>0){autoSync();renderRangs();}});
   // PWA : service worker (installation écran d'accueil + usage hors-ligne)
   if("serviceWorker" in navigator && location.protocol.indexOf("http")===0){
     navigator.serviceWorker.register("./sw.js").catch(()=>{});
