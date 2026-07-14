@@ -1,0 +1,16 @@
+{
+  "name": "Mon Hub",
+  "short_name": "Hub",
+  "description": "Hub personnel de Mathieu : profil, sport, to-do, courses, documents, animes.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0A1A3F",
+  "theme_color": "#0A1A3F",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
