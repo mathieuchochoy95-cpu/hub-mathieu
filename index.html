@@ -336,6 +336,32 @@
   .gate-cond .gc{font-size:12px;font-weight:800;padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.06);color:var(--muted);}
   .gate-cond .gc.ok{background:rgba(34,197,94,.16);color:#7fe0a0;}
   .lr-gate{font-size:10.5px;color:#ffb36b;font-weight:700;}
+
+  /* ---------- CORPS / MUSCLES ---------- */
+  .body-flip{display:flex;align-items:center;gap:12px;margin:2px 0 10px;}
+  .body-flip .body-avg{margin-left:auto;font-size:12px;color:var(--muted);font-weight:700;}
+  .body-flip .body-avg b{color:var(--sys);font-size:14px;}
+  .body-stage{background:radial-gradient(120% 90% at 50% 10%,rgba(84,200,255,.08),rgba(3,10,28,.4));
+    border:1px solid rgba(84,200,255,.18);border-radius:16px;padding:10px 6px;}
+  .body-svg{width:100%;max-width:300px;height:auto;display:block;margin:0 auto;touch-action:manipulation;}
+  .body-svg .msl{cursor:pointer;stroke:#0a1226;stroke-width:1.2;transition:filter .15s,opacity .15s;}
+  .body-svg .msl:active{filter:brightness(1.3);}
+  .body-svg .bodybase{stroke:#2b3d5e;stroke-width:1;}
+  .body-svg .mlabel{cursor:pointer;}
+  .body-legend{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:12px;}
+  .body-legend .lg{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:800;color:#cdd8ee;
+    background:rgba(255,255,255,.05);border:1px solid var(--line2);padding:4px 9px;border-radius:999px;}
+  .body-legend .lg i{width:11px;height:11px;border-radius:3px;display:inline-block;}
+  .msl-sheet .ms-badge{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-size:26px;font-weight:900;color:#fff;margin:0 auto 8px;border:3px solid rgba(255,255,255,.5);
+    background:radial-gradient(circle at 50% 35%,rgba(255,255,255,.28),transparent 60%),var(--mc,#6b7a99);box-shadow:0 0 22px var(--mcg,rgba(120,140,180,.7));}
+  .msl-ladder{margin:12px 0;}
+  .msl-ladder .row{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:9px;font-size:13px;border:1px solid transparent;}
+  .msl-ladder .row.cur{background:rgba(84,200,255,.1);border-color:rgba(84,200,255,.3);}
+  .msl-ladder .row .b{width:26px;height:26px;flex:0 0 26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:12px;color:#fff;}
+  .msl-ladder .row .n{flex:1;color:var(--muted);}
+  .msl-ladder .row.cur .n{color:#fff;font-weight:700;}
+  .msl-ladder .row .th{font-weight:800;color:var(--gold-l);white-space:nowrap;}
 </style>
 </head>
 <body>
@@ -520,6 +546,18 @@
       </div>
     </div>
 
+    <div class="card" style="border-color:rgba(84,200,255,.28);">
+      <h2><span class="dot" style="background:var(--sys);box-shadow:0 0 0 3px rgba(84,200,255,.18);"></span>📈 Ma progression</h2>
+      <div class="grid3" style="margin-bottom:14px;">
+        <div class="stat"><div class="lbl">Série d'activité</div><div class="val" id="streakVal" style="color:#ff9a3c;">🔥 0</div><div class="sub">jours d'affilée</div></div>
+        <div class="stat"><div class="lbl">XP aujourd'hui</div><div class="val" style="color:var(--sys);" id="xpToday">0</div></div>
+        <div class="stat"><div class="lbl">XP 7 jours</div><div class="val white-t" id="xp7">0</div></div>
+      </div>
+      <div id="xpChartWrap" style="margin-top:2px;"></div>
+      <div class="xp-txt" style="margin-top:3px;"><span id="xpChartFrom">—</span><span>aujourd'hui ▸</span></div>
+      <p class="note" id="streakHint" style="margin-top:10px;font-size:12px;"></p>
+    </div>
+
     <div class="card gate-card hide" id="gateCard">
       <h2><span class="dot red"></span>🚪 Objectif de palier</h2>
       <p class="sub">Pour franchir un palier, il te faut l'XP <b>ET</b> réussir ce défi. Il devient plus dur à chaque palier.</p>
@@ -583,6 +621,17 @@
     <div id="challOnce"></div>
 
     <button class="addbtn" id="addChallBtn">＋ Créer mon propre défi</button>
+
+    <div class="card" id="bodyCard" style="border-color:rgba(84,200,255,.28);">
+      <h2><span class="dot" style="background:var(--sys);box-shadow:0 0 0 3px rgba(84,200,255,.18);"></span>🧍 Mon corps — rangs par muscle</h2>
+      <p class="sub">Chaque muscle a son propre rang, qui monte selon ton <b>record</b> à un exo au poids du corps. Touche un muscle pour voir son palier et enregistrer un record.</p>
+      <div class="body-flip">
+        <button class="btn small ghost" id="bodyFlip">🔄 <span id="bodyFlipLbl">Voir le dos</span></button>
+        <div class="body-avg" id="bodyAvg"></div>
+      </div>
+      <div class="body-stage" id="bodyStage"></div>
+      <div class="body-legend" id="bodyLegend"></div>
+    </div>
 
     <div class="card" style="margin-top:16px;">
       <h2 style="cursor:pointer;" id="ladderToggle"><span class="dot"></span>🗼 Échelle des rangs <span class="pill mut" id="ladderCount" style="margin-left:auto;">▾</span></h2>
@@ -713,6 +762,7 @@ document.querySelectorAll(".navbtn").forEach(b=>{
   });
 });
 $("hRank").addEventListener("click",()=>document.querySelector('.navbtn[data-tab="rangs"]').click());
+$("bodyFlip").addEventListener("click",()=>{bodyView=bodyView==="front"?"back":"front";renderBody();});
 
 /* ---------- DÉCODAGE + INJECTION DES APPS ---------- */
 function b64ToUtf8(b64){
@@ -1612,8 +1662,214 @@ function showLevelUp(i){
   $("luLine").innerHTML=i>=30?"Une puissance interdite s'éveille en toi…":"Tu as vaincu tes limites. Tu montes en rang.";
   $("levelup").classList.add("show");
 }
+/* =================================================================
+   CORPS — rangs par muscle (exos poids du corps)
+   ================================================================= */
+const MTIERS=[
+  {g:"E",c:"#6b7a99",glow:"rgba(120,140,180,.7)"},
+  {g:"D",c:"#3fbf6f",glow:"rgba(63,191,111,.7)"},
+  {g:"C",c:"#3f8fff",glow:"rgba(63,143,255,.7)"},
+  {g:"B",c:"#a06bff",glow:"rgba(160,107,255,.75)"},
+  {g:"A",c:"#e6b24d",glow:"rgba(230,178,77,.8)"},
+  {g:"S",c:"#ff5a4d",glow:"rgba(255,90,77,.85)"}
+];
+// thr = [D,C,B,A,S] seuils pour ENTRER dans le tier (E = 0). unit affichée après le nombre.
+const MUSCLES=[
+  {id:"pecs",  name:"Pectoraux", view:"front", exo:"Pompes d'affilée",          unit:"pompes", thr:[10,25,40,60,100]},
+  {id:"epaules",name:"Épaules",  view:"front", exo:"Pompes piquées (pike)",     unit:"reps",   thr:[5,12,20,30,45]},
+  {id:"biceps",name:"Biceps",    view:"front", exo:"Tractions supination",      unit:"reps",   thr:[3,8,12,18,25]},
+  {id:"abdos", name:"Abdominaux",view:"front", exo:"Gainage planche",           unit:"sec",    thr:[45,90,120,180,300]},
+  {id:"avbras",name:"Avant-bras",view:"front", exo:"Suspension barre (dead hang)",unit:"sec",  thr:[30,60,90,120,180]},
+  {id:"quads", name:"Quadriceps",view:"front", exo:"Squats d'affilée",          unit:"squats", thr:[25,50,80,120,200]},
+  {id:"mollets",name:"Mollets",  view:"front", exo:"Extensions mollets (1 jambe)",unit:"reps", thr:[15,30,45,60,90]},
+  {id:"dos",   name:"Dorsaux",   view:"back",  exo:"Tractions strictes",        unit:"reps",   thr:[3,8,12,18,30]},
+  {id:"traps", name:"Trapèzes",  view:"back",  exo:"Rowing inversé",            unit:"reps",   thr:[8,15,25,35,50]},
+  {id:"triceps",name:"Triceps",  view:"back",  exo:"Dips",                      unit:"dips",   thr:[5,12,20,30,45]},
+  {id:"lombes",name:"Lombaires", view:"back",  exo:"Superman (gainage dorsal)", unit:"sec",    thr:[30,60,90,120,180]},
+  {id:"fessiers",name:"Fessiers",view:"back",  exo:"Hip thrust au sol",         unit:"reps",   thr:[20,40,60,90,130]},
+  {id:"ischios",name:"Ischios",  view:"back",  exo:"Nordic curls (ou pont 1 jambe)",unit:"reps",thr:[3,8,12,18,25]}
+];
+const K_MUSC="hub_muscles_v1";
+let muscRec=LS.get(K_MUSC,{})||{};
+function saveMusc(){LS.set(K_MUSC,muscRec);}
+function muscTier(m){const v=+muscRec[m.id]||0;let t=0;for(let i=0;i<m.thr.length;i++){if(v>=m.thr[i])t=i+1;}return t;}
+let bodyView="front";
+// Chemins SVG par muscle (bonhomme stylisé). Coords sur un canvas 220x420.
+/* Silhouette anatomique stylisée réaliste. viewBox 0 0 240 470.
+   base = corps/peau (contour + membres non musclés) ; parts = groupes musculaires coloriés par rang.
+   Chaque muscle : plusieurs paths (gauche/droite + têtes) pour un rendu volumique ; l'ombrage vient d'overlays SVG. */
+const BODY_SVG={
+  front:{
+    base:`
+      <ellipse class="bodybase" cx="120" cy="34" rx="21" ry="24"/>
+      <path class="bodybase" d="M108 55 q12 8 24 0 l4 12 q-16 10 -32 0 Z"/>
+      <path class="bodybase" d="M86 72 Q120 60 154 72 Q176 80 178 120 L172 150 Q150 140 150 120 L150 150 Q150 200 145 215 L95 215 Q90 200 90 150 L90 120 Q90 140 68 150 L62 120 Q64 80 86 72 Z"/>
+      <path class="bodybase" d="M64 122 Q56 160 60 196 Q62 210 74 210 Q82 208 80 196 Q78 160 82 128 Z"/>
+      <path class="bodybase" d="M176 122 Q184 160 180 196 Q178 210 166 210 Q158 208 160 196 Q162 160 158 128 Z"/>
+      <path class="bodybase" d="M60 198 q-6 24 2 44 q6 8 14 4 q6 -6 4 -20 q-2 -18 2 -30 Z"/>
+      <path class="bodybase" d="M180 198 q6 24 -2 44 q-6 8 -14 4 q-6 -6 -4 -20 q2 -18 -2 -30 Z"/>
+      <path class="bodybase" d="M96 214 Q120 224 144 214 L146 250 Q147 300 138 330 L128 330 Q124 300 122 260 L118 260 Q116 300 112 330 L102 330 Q93 300 94 250 Z"/>
+      <path class="bodybase" d="M102 330 q-4 44 2 84 q6 6 14 2 q4 -40 4 -86 Z"/>
+      <path class="bodybase" d="M138 330 q4 44 -2 84 q-6 6 -14 2 q-4 -40 -4 -86 Z"/>
+    `,
+    parts:{
+      epaules:`<path class="msl" data-m="epaules" d="M86 74 Q66 78 63 108 Q74 118 90 110 Q94 86 86 74 Z"/><path class="msl" data-m="epaules" d="M154 74 Q174 78 177 108 Q166 118 150 110 Q146 86 154 74 Z"/>`,
+      pecs:`<path class="msl" data-m="pecs" d="M92 84 Q118 80 118 84 L118 118 Q104 128 90 118 Q86 98 92 84 Z"/><path class="msl" data-m="pecs" d="M148 84 Q122 80 122 84 L122 118 Q136 128 150 118 Q154 98 148 84 Z"/>`,
+      biceps:`<path class="msl" data-m="biceps" d="M66 116 Q60 140 64 164 Q74 168 80 162 Q82 138 80 118 Z"/><path class="msl" data-m="biceps" d="M174 116 Q180 140 176 164 Q166 168 160 162 Q158 138 160 118 Z"/>`,
+      avbras:`<path class="msl" data-m="avbras" d="M62 168 Q58 190 64 210 Q72 212 76 206 Q78 186 78 168 Z"/><path class="msl" data-m="avbras" d="M178 168 Q182 190 176 210 Q168 212 164 206 Q162 186 162 168 Z"/>`,
+      abdos:`<path class="msl" data-m="abdos" d="M104 124 L136 124 Q140 128 138 150 Q138 200 120 214 Q102 200 102 150 Q100 128 104 124 Z"/>`,
+      quads:`<path class="msl" data-m="quads" d="M97 222 Q94 260 100 322 Q112 330 121 326 L121 258 Q120 232 116 222 Z"/><path class="msl" data-m="quads" d="M143 222 Q146 260 140 322 Q128 330 119 326 L119 258 Q120 232 124 222 Z"/>`,
+      mollets:`<path class="msl" data-m="mollets" d="M104 340 Q98 372 106 400 Q114 404 118 398 Q120 368 116 340 Z"/><path class="msl" data-m="mollets" d="M136 340 Q142 372 134 400 Q126 404 122 398 Q120 368 124 340 Z"/>`
+    }
+  },
+  back:{
+    base:`
+      <ellipse class="bodybase" cx="120" cy="34" rx="21" ry="24"/>
+      <path class="bodybase" d="M108 55 q12 8 24 0 l4 12 q-16 10 -32 0 Z"/>
+      <path class="bodybase" d="M86 72 Q120 60 154 72 Q176 80 178 120 L172 150 Q150 140 150 120 L150 150 Q150 200 145 215 L95 215 Q90 200 90 150 L90 120 Q90 140 68 150 L62 120 Q64 80 86 72 Z"/>
+      <path class="bodybase" d="M64 122 Q56 160 60 196 Q62 210 74 210 Q82 208 80 196 Q78 160 82 128 Z"/>
+      <path class="bodybase" d="M176 122 Q184 160 180 196 Q178 210 166 210 Q158 208 160 196 Q162 160 158 128 Z"/>
+      <path class="bodybase" d="M60 198 q-6 24 2 44 q6 8 14 4 q6 -6 4 -20 q-2 -18 2 -30 Z"/>
+      <path class="bodybase" d="M180 198 q6 24 -2 44 q-6 8 -14 4 q-6 -6 -4 -20 q2 -18 -2 -30 Z"/>
+      <path class="bodybase" d="M102 330 q-4 44 2 84 q6 6 14 2 q4 -40 4 -86 Z"/>
+      <path class="bodybase" d="M138 330 q4 44 -2 84 q-6 6 -14 2 q-4 -40 -4 -86 Z"/>
+    `,
+    parts:{
+      traps:`<path class="msl" data-m="traps" d="M100 66 Q120 58 140 66 Q136 92 120 100 Q104 92 100 66 Z"/>`,
+      epaules:`<path class="msl" data-m="epaules" d="M86 74 Q66 78 63 108 Q74 118 90 110 Q94 86 86 74 Z"/><path class="msl" data-m="epaules" d="M154 74 Q174 78 177 108 Q166 118 150 110 Q146 86 154 74 Z"/>`,
+      dos:`<path class="msl" data-m="dos" d="M92 100 Q118 96 118 102 L118 150 Q106 162 92 150 Q86 122 92 100 Z"/><path class="msl" data-m="dos" d="M148 100 Q122 96 122 102 L122 150 Q134 162 148 150 Q154 122 148 100 Z"/>`,
+      triceps:`<path class="msl" data-m="triceps" d="M66 116 Q60 142 64 166 Q74 170 80 164 Q82 138 80 118 Z"/><path class="msl" data-m="triceps" d="M174 116 Q180 142 176 166 Q166 170 160 164 Q158 138 160 118 Z"/>`,
+      lombes:`<path class="msl" data-m="lombes" d="M104 152 L136 152 Q140 168 138 192 Q120 202 102 192 Q100 168 104 152 Z"/>`,
+      fessiers:`<path class="msl" data-m="fessiers" d="M100 214 Q118 212 119 214 L119 250 Q108 258 98 248 Q94 226 100 214 Z"/><path class="msl" data-m="fessiers" d="M140 214 Q122 212 121 214 L121 250 Q132 258 142 248 Q146 226 140 214 Z"/>`,
+      ischios:`<path class="msl" data-m="ischios" d="M99 256 Q96 292 104 322 Q114 328 121 324 L121 260 Q116 254 99 256 Z"/><path class="msl" data-m="ischios" d="M141 256 Q144 292 136 322 Q126 328 119 324 L119 260 Q124 254 141 256 Z"/>`
+    }
+  }
+};
+function shadeHex(hex,f){ // éclaircit (f>0) ou assombrit (f<0) une couleur hex
+  const n=parseInt(hex.slice(1),16);let r=(n>>16)&255,g=(n>>8)&255,b=n&255;
+  const adj=v=>Math.max(0,Math.min(255,Math.round(f>=0?v+(255-v)*f:v*(1+f))));
+  return "#"+[adj(r),adj(g),adj(b)].map(v=>v.toString(16).padStart(2,"0")).join("");
+}
+function renderBody(){
+  const stage=$("bodyStage");if(!stage)return;
+  const V=BODY_SVG[bodyView];
+  let defs="",parts="";
+  Object.keys(V.parts).forEach(mid=>{
+    const m=MUSCLES.find(x=>x.id===mid);const t=muscTier(m);const c=MTIERS[t].c;
+    const gid="g_"+bodyView+"_"+mid;
+    // dégradé radial pour le volume : clair au centre-haut, foncé en bas
+    defs+=`<radialGradient id="${gid}" cx="42%" cy="32%" r="75%">
+      <stop offset="0%" stop-color="${shadeHex(c,.34)}"/>
+      <stop offset="55%" stop-color="${c}"/>
+      <stop offset="100%" stop-color="${shadeHex(c,-.4)}"/>
+    </radialGradient>`;
+    // chaque path du muscle : rempli du dégradé + relief (contour interne foncé via stroke)
+    parts+=V.parts[mid].replace(/<path /g,`<path fill="url(#${gid})" `);
+  });
+  stage.innerHTML=`<svg class="body-svg" viewBox="0 0 240 470" xmlns="http://www.w3.org/2000/svg">
+    <defs>${defs}
+      <radialGradient id="bodyshade" cx="42%" cy="30%" r="80%"><stop offset="0%" stop-color="#20304e"/><stop offset="100%" stop-color="#0e1a30"/></radialGradient>
+      <filter id="softsh" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#02060f" flood-opacity=".5"/></filter>
+    </defs>
+    <g filter="url(#softsh)">${V.base.replace(/class="bodybase"/g,'class="bodybase" fill="url(#bodyshade)"')}</g>
+    <g>${parts}</g>
+  </svg>`;
+  stage.querySelectorAll('.msl').forEach(p=>p.addEventListener("click",()=>openMuscle(p.dataset.m)));
+  $("bodyFlipLbl").textContent=bodyView==="front"?"Voir le dos":"Voir la face";
+  const avg=MUSCLES.reduce((a,m)=>a+muscTier(m),0)/MUSCLES.length;
+  $("bodyAvg").innerHTML=`Rang moyen : <b>${MTIERS[Math.min(5,Math.round(avg))].g}</b>`;
+  $("bodyLegend").innerHTML=MTIERS.map(t=>`<span class="lg"><i style="background:${t.c}"></i>${t.g}</span>`).join("");
+}
+function openMuscle(mid){
+  const m=MUSCLES.find(x=>x.id===mid);if(!m)return;
+  const t=muscTier(m),tier=MTIERS[t],rec=+muscRec[m.id]||0;
+  const nextThr=t<5?m.thr[t]:null;
+  const ladderRows=MTIERS.map((tr,i)=>{
+    const seuil=i===0?0:m.thr[i-1];
+    return `<div class="row ${i===t?"cur":""}"><span class="b" style="background:${tr.c}">${tr.g}</span>
+      <span class="n">Rang ${tr.g}</span><span class="th">${i===0?"début":"≥ "+seuil+" "+m.unit}</span></div>`;
+  }).join("");
+  openSheet(`
+    <button class="close-x" onclick="closeSheet()">✕</button>
+    <h3>${esc(m.name)}</h3>
+    <div class="msl-sheet">
+      <div class="ms-badge" style="--mc:${tier.c};--mcg:${tier.glow}">${tier.g}</div>
+      <p class="sub" style="text-align:center;">Exo-repère : <b>${esc(m.exo)}</b></p>
+      <div class="stat" style="margin:10px 0;"><div class="lbl">Ton record actuel</div><div class="val gold-t">${rec} ${m.unit}</div>
+        ${nextThr?`<div class="sub">Prochain rang ${MTIERS[t+1].g} à ${nextThr} ${m.unit} (encore ${Math.max(0,nextThr-rec)})</div>`:`<div class="sub">Rang MAX atteint 👑</div>`}</div>
+      <div class="msl-ladder">${ladderRows}</div>
+      <label>Enregistrer un nouveau record (${m.unit})</label>
+      <div class="row" style="display:flex;gap:8px;">
+        <input type="number" id="ms_rec" min="0" max="100000" value="${rec}" inputmode="numeric" style="flex:1;">
+        <button class="btn small gold" style="flex:0 0 auto;" onclick="saveMuscRec('${m.id}')">Valider</button>
+      </div>
+    </div>
+  `);
+}
+function saveMuscRec(mid){
+  const m=MUSCLES.find(x=>x.id===mid);if(!m)return;
+  const v=Math.max(0,parseInt($("ms_rec").value)||0);
+  const before=muscTier(m);
+  muscRec[m.id]=v;saveMusc();
+  const after=muscTier(m);
+  renderBody();closeSheet();
+  if(after>before)flash("💪 "+m.name+" — rang "+MTIERS[after].g+" débloqué !");
+  else flash("Record enregistré ✓");
+}
+
+/* ---- Progression : historique XP quotidien, série 🔥, courbe ---- */
+const K_XPHIST="hub_xp_hist_v1";
+function getHist(){return LS.get(K_XPHIST,{})||{};}
+function saveHist(h){LS.set(K_XPHIST,h);}
+function recordXp(){const h=getHist();h[todayISO()]=RS.xp;saveHist(h);}
+function isoAdd(base,delta){const d=new Date(base+"T00:00:00");d.setDate(d.getDate()+delta);return d.toISOString().slice(0,10);}
+function xpSeries(nDays){
+  const h=getHist(),days=Object.keys(h).sort(),today=todayISO(),start=isoAdd(today,-(nDays-1));
+  let cur=0;days.forEach(d=>{if(d<start)cur=h[d];});
+  const out=[];for(let i=0;i<nDays;i++){const key=isoAdd(start,i);if(h[key]!==undefined)cur=h[key];out.push({d:key,v:cur});}
+  return out;
+}
+function currentStreak(){
+  const h=getHist(),days=Object.keys(h).sort();if(!days.length)return 0;
+  const active=new Set();
+  for(let i=1;i<days.length;i++){if((h[days[i]]-h[days[i-1]])>0)active.add(days[i]);}
+  let cur=todayISO();if(!active.has(cur))cur=isoAdd(cur,-1);
+  let n=0;while(active.has(cur)){n++;cur=isoAdd(cur,-1);}
+  return n;
+}
+function drawXpChart(series){
+  const W=320,H=90,pad=7,n=series.length,vs=series.map(p=>p.v);
+  const min=Math.min(...vs),max=Math.max(...vs),range=(max-min)||1;
+  const x=i=>pad+(n<2?0:(i/(n-1))*(W-2*pad));
+  const y=v=>H-pad-((v-min)/range)*(H-2*pad);
+  const pts=series.map((p,i)=>x(i).toFixed(1)+","+y(p.v).toFixed(1));
+  const area=`M ${x(0).toFixed(1)},${(H-pad).toFixed(1)} L `+pts.join(" L ")+` L ${x(n-1).toFixed(1)},${(H-pad).toFixed(1)} Z`;
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:92px;display:block;">
+    <defs><linearGradient id="xpg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="rgba(84,200,255,.38)"/><stop offset="100%" stop-color="rgba(84,200,255,0)"/></linearGradient></defs>
+    <path d="${area}" fill="url(#xpg)"/>
+    <polyline points="${pts.join(" ")}" fill="none" stroke="#54c8ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="${x(n-1).toFixed(1)}" cy="${y(series[n-1].v).toFixed(1)}" r="3.2" fill="#fff" stroke="#54c8ff" stroke-width="2"/>
+  </svg>`;
+}
+function renderProgress(){
+  const strk=currentStreak();
+  $("streakVal").innerHTML="🔥 "+strk;
+  const h=getHist(),prevDays=Object.keys(h).filter(d=>d<todayISO()).sort();
+  const prevTotal=prevDays.length?h[prevDays[prevDays.length-1]]:0;
+  const gToday=RS.xp-prevTotal;
+  $("xpToday").textContent=(gToday>0?"+":"")+gToday.toLocaleString("fr-FR");
+  const g7=RS.xp-xpSeries(8)[0].v;
+  $("xp7").textContent=(g7>0?"+":"")+g7.toLocaleString("fr-FR");
+  const s30=xpSeries(30);
+  $("xpChartWrap").innerHTML=drawXpChart(s30);
+  $("xpChartFrom").textContent="◂ "+new Date(s30[0].d+"T00:00:00").toLocaleDateString("fr-FR",{day:"numeric",month:"short"});
+  $("streakHint").innerHTML=strk>0
+    ? "Gagne de l'XP aujourd'hui (pas, séance, défi…) pour garder ta série 🔥"
+    : "Sois actif 2 jours d'affilée pour lancer ta série.";
+}
 function renderRangs(){
   const xp=RS.xp, idx=rankIndex(xp), r=RANKS[idx], next=RANKS[idx+1];
+  recordXp();renderProgress();renderBody();
   $("rankShort").textContent=r.short;
   const bd=$("rankBadge");bd.style.setProperty("--rk",r.color);bd.style.setProperty("--rkglow",r.glow);
   $("rankName").textContent=r.name;$("rankTitle").textContent=r.title;
