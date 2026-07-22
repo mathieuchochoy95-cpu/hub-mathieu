@@ -234,6 +234,11 @@
   .al-row .ai .m{font-size:11.5px;color:var(--muted);}
   .al-row .add{flex:0 0 auto;font-size:18px;color:var(--gold-l);font-weight:900;}
   .al-loading{padding:14px;text-align:center;color:var(--muted);font-size:13px;}
+  .anime-filters{margin-bottom:12px;}
+  .anime-filters .navscroll{padding:0;}
+  .fchip{flex:0 0 auto;background:rgba(255,255,255,.05);border:1px solid var(--line2);color:var(--muted);
+    padding:7px 14px;border-radius:999px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;}
+  .fchip.active{background:linear-gradient(135deg,var(--red),var(--red-d));color:#fff;border-color:var(--red);}
 
   /* modal */
   .overlay{position:fixed;inset:0;background:rgba(3,8,22,.7);z-index:100;display:none;align-items:flex-end;justify-content:center;}
@@ -400,7 +405,8 @@
 
 <nav>
   <div class="navscroll" id="navscroll">
-    <button class="navbtn active" data-tab="rangs"><span class="ic">⚔️</span> Rangs</button>
+    <button class="navbtn active" data-tab="accueil"><span class="ic">🏠</span> Accueil</button>
+    <button class="navbtn" data-tab="rangs"><span class="ic">⚔️</span> Rangs</button>
     <button class="navbtn" data-tab="todo"><span class="ic">✅</span> To-Do</button>
     <button class="navbtn" data-tab="sport"><span class="ic">🏃</span> Sport</button>
     <button class="navbtn" data-tab="profil"><span class="ic">👤</span> Profil</button>
@@ -561,13 +567,76 @@
       <p class="note" style="margin-top:6px;">🗓️ Les jaquettes, statuts et dates du prochain épisode se remplissent tout seuls via AniList. Pour chaque date de sortie, un bouton <b>« Rappel calendrier »</b> ajoute l'alerte dans ton Calendrier iPhone.</p>
     </div>
     <div id="animeAlerts"></div>
+    <div class="anime-filters">
+      <input type="text" id="animeSearch" placeholder="🔎 Filtrer ma liste…" autocomplete="off" style="font-size:14px;margin-bottom:8px;">
+      <div class="navscroll" id="animeFilterChips">
+        <button class="fchip active" data-f="all">Tous</button>
+        <button class="fchip" data-f="watching">En cours</button>
+        <button class="fchip" data-f="plan">À voir</button>
+        <button class="fchip" data-f="done">Terminé</button>
+        <button class="fchip" data-f="paused">En pause</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
+        <label style="margin:0;flex:0 0 auto;">Trier</label>
+        <select id="animeSort" style="font-size:14px;">
+          <option value="default">Par défaut</option>
+          <option value="next">Prochaine sortie</option>
+          <option value="title">Titre A→Z</option>
+        </select>
+        <span class="pill mut" id="animeCount" style="margin-left:auto;">—</span>
+      </div>
+    </div>
     <div id="animeList"></div>
     <div class="empty hide" id="animeEmpty"><span class="big">🍿</span>Ta bibliothèque est vide.<br>Ajoute ton premier anime pour suivre ta progression ⬆️</div>
   </div>
 </div>
 
+<!-- ============================= ACCUEIL ============================= -->
+<div class="tab active" id="tab-accueil">
+  <div class="wrap">
+    <div class="card" id="homeHero" data-go="rangs" style="text-align:center;cursor:pointer;">
+      <div class="sys-tag" style="margin-bottom:10px;">⟦ SALUT MATHIEU ⟧</div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:16px;">
+        <div class="rank-badge" id="homeBadge" style="width:82px;height:82px;font-size:34px;margin:0;animation:none;"><span id="homeShort">E</span></div>
+        <div style="text-align:left;">
+          <div class="rank-name" id="homeRank" style="font-size:18px;">Rang E-V</div>
+          <div class="lr-xp" id="homeXp" style="font-size:13px;">0 XP</div>
+          <div style="font-size:13px;color:#ff9a3c;font-weight:800;margin-top:2px;" id="homeStreak">🔥 0 jour</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid2" style="margin-bottom:16px;">
+      <div class="stat home-stat" data-go="rangs"><div class="lbl">XP aujourd'hui</div><div class="val" style="color:var(--sys);" id="homeXpToday">0</div></div>
+      <div class="stat home-stat" data-go="sport"><div class="lbl">Pas d'hier</div><div class="val" style="color:#f9a24a;" id="homeSteps">—</div></div>
+    </div>
+
+    <div class="card">
+      <h2><span class="dot"></span>⚡ Défis du jour</h2>
+      <div id="homeDaily"></div>
+    </div>
+
+    <div class="card" id="homeAnimeCard">
+      <h2><span class="dot red"></span>🍥 Prochaines sorties animes</h2>
+      <div id="homeAnimes"></div>
+    </div>
+
+    <div class="card">
+      <h2><span class="dot"></span>🚀 Accès rapide</h2>
+      <div class="grid3" id="homeShortcuts">
+        <button class="addbtn" data-go="rangs" style="flex-direction:column;gap:4px;">⚔️<span style="font-size:12px;">Rangs</span></button>
+        <button class="addbtn" data-go="sport" style="flex-direction:column;gap:4px;">🏋️<span style="font-size:12px;">Sport</span></button>
+        <button class="addbtn" data-go="courses" style="flex-direction:column;gap:4px;">🛒<span style="font-size:12px;">Courses</span></button>
+        <button class="addbtn" data-go="animes" style="flex-direction:column;gap:4px;">🍥<span style="font-size:12px;">Animes</span></button>
+        <button class="addbtn" data-go="todo" style="flex-direction:column;gap:4px;">✅<span style="font-size:12px;">To-Do</span></button>
+        <button class="addbtn" data-go="infos" style="flex-direction:column;gap:4px;">📌<span style="font-size:12px;">Infos</span></button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ============================= RANGS (SYSTÈME) ============================= -->
-<div class="tab active" id="tab-rangs">
+<div class="tab" id="tab-rangs">
   <div class="wrap">
     <div class="sys-hero" id="rankHero">
       <div class="sys-corner tl"></div><div class="sys-corner tr"></div><div class="sys-corner bl"></div><div class="sys-corner br"></div>
@@ -671,6 +740,18 @@
       </div>
       <div class="body-stage" id="bodyStage"></div>
       <div class="body-legend" id="bodyLegend"></div>
+    </div>
+
+    <div class="card">
+      <h2 style="cursor:pointer;" id="cmpToggle"><span class="dot" style="background:var(--sys);box-shadow:0 0 0 3px rgba(84,200,255,.18);"></span>📊 Comparer ma progression <span class="pill mut" id="cmpChevron" style="margin-left:auto;">▾</span></h2>
+      <div id="cmpBody" class="hide">
+        <p class="sub">Compare l'évolution de tes rangs entre deux dates. Une photo de ta progression est enregistrée automatiquement chaque jour où tu ouvres l'app.</p>
+        <div class="row">
+          <div><label>Du</label><select id="cmpFrom"></select></div>
+          <div><label>Au</label><select id="cmpTo"></select></div>
+        </div>
+        <div id="cmpResult" style="margin-top:14px;"></div>
+      </div>
     </div>
 
     <div class="card" style="margin-top:16px;">
@@ -876,6 +957,7 @@ document.querySelectorAll(".navbtn").forEach(b=>{
     window.scrollTo({top:0,behavior:"instant"});
     if(t==="sport"||t==="todo")loadFrame(t);
     if(t==="sport")renderSportJournal();
+    if(t==="accueil")renderHome();
     if(t==="rangs")syncRangs();
     if(t==="animes")refreshAiringAL();
   });
@@ -1393,15 +1475,22 @@ if(animes===null){animes=DEFAULT_ANIMES;saveAnimes();}
 function saveAnimes(){LS.set(K_ANIME,animes);}
 const STATUS={watching:{l:"En cours",c:"ok"},done:{l:"Terminé",c:"gold"},plan:{l:"À voir",c:"mut"},paused:{l:"En pause",c:"warn"}};
 function daysUntil(dateStr){if(!dateStr)return null;const d=new Date(dateStr+"T00:00:00");const now=new Date();now.setHours(0,0,0,0);return Math.ceil((d-now)/86400000);}
+let animeFilter="all",animeSort="default",animeSearch="";
 function renderAnimes(){
   const l=$("animeList");
   $("animeEmpty").classList.toggle("hide",animes.length>0);
-  // alertes
+  // alertes (sur toute la liste, indépendantes des filtres)
   const alerts=animes.filter(a=>{const dd=daysUntil(a.next);return dd!==null&&dd>=0&&dd<=30;});
   $("animeAlerts").innerHTML=alerts.map(a=>{const dd=daysUntil(a.next);
     return `<div class="banner"><span style="font-size:22px;">🔔</span><div><b>${esc(a.title)}</b> — nouvelle saison ${dd===0?"<b class='ok-t'>aujourd'hui !</b>":"dans <b class='gold-t'>"+dd+" jour"+(dd>1?"s":"")+"</b>"} (${new Date(a.next+"T00:00:00").toLocaleDateString("fr-FR",{day:"2-digit",month:"long",year:"numeric"})})</div></div>`;
   }).join("");
-  l.innerHTML=animes.map(a=>{
+  // filtre + recherche + tri
+  const q=animeSearch.trim().toLowerCase();
+  let list=animes.filter(a=>(animeFilter==="all"||a.status===animeFilter)&&(!q||(a.title||"").toLowerCase().includes(q)));
+  if(animeSort==="next")list=list.slice().sort((a,b)=>{const da=daysUntil(a.next),db=daysUntil(b.next);const va=(da===null||da<0)?1e9:da,vb=(db===null||db<0)?1e9:db;return va-vb;});
+  else if(animeSort==="title")list=list.slice().sort((a,b)=>(a.title||"").localeCompare(b.title||""));
+  const cnt=$("animeCount");if(cnt)cnt.textContent=list.length+" / "+animes.length;
+  l.innerHTML=list.map(a=>{
     const st=STATUS[a.status]||STATUS.watching;
     const dd=daysUntil(a.next);
     let cd="";
@@ -1472,6 +1561,13 @@ function saveAnimeForm(id){
   checkAnimeNotifs();
 }
 $("addAnimeBtn").addEventListener("click",()=>editAnime(null));
+$("animeSearch").addEventListener("input",e=>{animeSearch=e.target.value;renderAnimes();});
+$("animeSort").addEventListener("change",e=>{animeSort=e.target.value;renderAnimes();});
+$("animeFilterChips").querySelectorAll(".fchip").forEach(c=>c.addEventListener("click",()=>{
+  animeFilter=c.dataset.f;
+  $("animeFilterChips").querySelectorAll(".fchip").forEach(x=>x.classList.toggle("active",x===c));
+  renderAnimes();
+}));
 
 /* ---- AniList : encyclopédie (enrichissement + recherche) ---- */
 function alDate(ts){const d=new Date(ts*1000);return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());}
@@ -2176,6 +2272,73 @@ function renderProgress(){
     ? "Gagne de l'XP aujourd'hui (pas, séance, défi…) pour garder ta série 🔥"
     : "Sois actif 2 jours d'affilée pour lancer ta série.";
 }
+/* ---- Comparaison de rangs : photos datées ---- */
+const K_SNAP="hub_rank_snaps_v1";
+function getSnaps(){return LS.get(K_SNAP,{})||{};}
+function saveSnaps(o){LS.set(K_SNAP,o);}
+function muscSnap(){const m={};MUSCLES.forEach(x=>m[x.id]=muscTier(x));return m;}
+function snapshotRanks(){const s=getSnaps();s[todayISO()]={xp:RS.xp,rank:rankIndex(RS.xp),m:muscSnap()};saveSnaps(s);}
+function fmtSnapDate(d){return new Date(d+"T00:00:00").toLocaleDateString("fr-FR",{day:"2-digit",month:"short",year:"2-digit"});}
+function renderCmp(){
+  const s=getSnaps();const dates=Object.keys(s).sort();
+  const from=$("cmpFrom"),to=$("cmpTo"),res=$("cmpResult");if(!from)return;
+  if(dates.length<2){res.innerHTML=`<div class="empty" style="padding:16px;">Pas encore assez d'historique. Reviens dans quelques jours — une photo est prise chaque jour d'ouverture (${dates.length}/2).</div>`;from.innerHTML=to.innerHTML="";return;}
+  const pf=from.value,pt=to.value;
+  const opt=d=>`<option value="${d}">${fmtSnapDate(d)}</option>`;
+  from.innerHTML=dates.map(opt).join("");to.innerHTML=dates.map(opt).join("");
+  from.value=(pf&&dates.includes(pf))?pf:dates[0];
+  to.value=(pt&&dates.includes(pt))?pt:dates[dates.length-1];
+  const a=s[from.value],b=s[to.value];
+  if(!a||!b||from.value>=to.value){res.innerHTML=`<div class="note">Choisis une date de fin postérieure à la date de début.</div>`;return;}
+  const dxp=b.xp-a.xp;
+  const r1=RANKS[a.rank]||RANKS[0],r2=RANKS[b.rank]||RANKS[0];
+  const rankLine=a.rank===b.rank?`<span class="pill mut">${esc(r2.name)} (inchangé)</span>`:`<span class="pill ok">${esc(r1.name)} → <b>${esc(r2.name)}</b> ▲</span>`;
+  const muscRows=MUSCLES.map(mu=>{
+    const t1=(a.m&&a.m[mu.id])||0,t2=(b.m&&b.m[mu.id])||0,diff=t2-t1;
+    const badge=diff>0?`<span class="pill ok">${MTIERS[t1].g}→${MTIERS[t2].g} ▲${diff}</span>`:(diff<0?`<span class="pill red">${MTIERS[t1].g}→${MTIERS[t2].g} ▼</span>`:`<span class="pill mut">${MTIERS[t2].g} =</span>`);
+    return `<div class="checkline"><span class="txt">${esc(mu.name)}</span>${badge}</div>`;
+  }).join("");
+  const gained=MUSCLES.filter(mu=>((b.m&&b.m[mu.id])||0)>((a.m&&a.m[mu.id])||0)).length;
+  res.innerHTML=`
+    <div class="grid2" style="margin-bottom:12px;">
+      <div class="stat"><div class="lbl">XP gagné</div><div class="val" style="color:var(--sys);">${dxp>=0?"+":""}${dxp.toLocaleString("fr-FR")}</div></div>
+      <div class="stat"><div class="lbl">Muscles montés</div><div class="val gold-t">${gained}</div></div>
+    </div>
+    <div style="margin:0 2px 8px;font-size:12px;color:var(--muted);">Rang global : ${rankLine}</div>
+    ${muscRows}`;
+}
+(function(){
+  const tg=document.getElementById("cmpToggle");
+  if(tg)tg.addEventListener("click",()=>{const bd=$("cmpBody");bd.classList.toggle("hide");$("cmpChevron").textContent=bd.classList.contains("hide")?"▾":"▴";if(!bd.classList.contains("hide"))renderCmp();});
+  ["cmpFrom","cmpTo"].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener("change",renderCmp);});
+})();
+function renderHome(){
+  if(!$("homeShort"))return;
+  const xp=RS.xp,idx=rankIndex(xp),r=RANKS[idx];
+  $("homeShort").textContent=r.short;
+  const bd=$("homeBadge");bd.style.setProperty("--rk",r.color);bd.style.setProperty("--rkglow",r.glow);
+  $("homeRank").textContent=r.name;$("homeXp").textContent=xp.toLocaleString("fr-FR")+" XP";
+  const strk=currentStreak();$("homeStreak").textContent="🔥 "+strk+" jour"+(strk>1?"s":"");
+  const h=getHist(),prevDays=Object.keys(h).filter(d=>d<todayISO()).sort();
+  const prevTotal=prevDays.length?h[prevDays[prevDays.length-1]]:0;const g=xp-prevTotal;
+  $("homeXpToday").textContent=(g>0?"+":"")+g.toLocaleString("fr-FR");
+  const S=getSteps(),ys=+S[isoAdd(todayISO(),-1)]||0;
+  $("homeSteps").textContent=ys?ys.toLocaleString("fr-FR"):"—";
+  // défis du jour restants
+  const C=allChalls(),today=todayISO();
+  const pending=C.daily.filter(c=>RS.daily[c.id]!==today);
+  $("homeDaily").innerHTML=pending.length?pending.slice(0,6).map(c=>`
+    <div class="chall" data-id="${c.id}"><div class="cbody"><div class="cn">${esc(c.n)}</div><div class="cd">${c.d?esc(c.d):"Rejouable chaque jour"}</div></div>
+    <div class="cxp">+${c.xp} XP</div><button class="cbtn" data-act="hd">＋</button></div>`).join(""):`<div class="empty" style="padding:16px;">Tous tes défis du jour sont faits ✅</div>`;
+  $("homeDaily").querySelectorAll('[data-act="hd"]').forEach(b=>b.addEventListener("click",()=>{doDaily(b.closest("[data-id]").dataset.id);renderHome();}));
+  // prochaines sorties animes
+  const up=animes.filter(a=>a.next&&daysUntil(a.next)!==null&&daysUntil(a.next)>=0).sort((a,b)=>a.next.localeCompare(b.next)).slice(0,4);
+  $("homeAnimeCard").style.display=up.length?"":"none";
+  $("homeAnimes").innerHTML=up.map(a=>{const dd=daysUntil(a.next);
+    return `<div class="checkline"><div class="txt"><b>${esc(a.title)}</b><div style="font-size:11px;color:var(--muted);">${dd===0?"<span class='ok-t'>aujourd'hui !</span>":"dans "+dd+" jour"+(dd>1?"s":"")} · ${new Date(a.next+"T00:00:00").toLocaleDateString("fr-FR",{day:"2-digit",month:"short"})}</div></div></div>`;
+  }).join("");
+}
+(function(){const t=document.getElementById("tab-accueil");if(t)t.addEventListener("click",e=>{const g=e.target.closest("[data-go]");if(g){const btn=document.querySelector('.navbtn[data-tab="'+g.dataset.go+'"]');if(btn)btn.click();}});})();
 function renderRangs(){
   const xp=RS.xp, idx=rankIndex(xp), r=RANKS[idx], next=RANKS[idx+1];
   recordXp();renderProgress();renderBody();
@@ -2364,8 +2527,9 @@ $("overlay").addEventListener("click",e=>{if(e.target===$("overlay"))closeSheet(
   renderDishes();renderPicker();renderShop();
   renderAnimes();
   renderSportJournal();
+  renderHome();
   const pasIn=ingestSteps();
-  autoSync();renderRangs();
+  autoSync();renderRangs();snapshotRanks();
   if(pasIn>0){document.querySelector('.navbtn[data-tab="rangs"]').click();flash("🚶 "+pasIn.toLocaleString("fr-FR")+" pas synchronisés depuis Santé");}
   // Récupération réseau des pas au démarrage (webhook N8N), silencieuse
   fetchSteps().then(added=>{if(added>0){autoSync();renderRangs();}});
