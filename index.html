@@ -465,6 +465,28 @@
 
 <!-- ============================= SPORT ============================= -->
 <div class="tab frameTab" id="tab-sport">
+  <div class="wrap" style="padding:16px 16px 0;">
+    <div class="card">
+      <h2><span class="dot"></span>⏱️ Chrono</h2>
+      <div style="text-align:center;">
+        <div id="chronoDisp" style="font-size:46px;font-weight:900;letter-spacing:1px;font-variant-numeric:tabular-nums;color:var(--gold-l);">00:00</div>
+        <div class="row" style="justify-content:center;margin-top:10px;">
+          <button class="btn small gold" id="chronoStart" style="flex:0 0 auto;">▶︎ Démarrer</button>
+          <button class="btn small ghost" id="chronoReset" style="flex:0 0 auto;">↺ Reset</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="dot red"></span>🏋️ Journal &amp; records</h2>
+      <p class="sub">Logue tes séries au poids du corps. Battre ton record fait <b>monter le rang du muscle</b> 💪 dans l'onglet Rangs.</p>
+      <button class="addbtn" id="logWorkoutBtn">＋ Loguer une série</button>
+      <div class="section-title" style="margin-top:16px;">🏆 Mes records</div>
+      <div id="recordsList"></div>
+      <div class="section-title">🕒 Historique récent</div>
+      <div id="workoutHist"></div>
+    </div>
+  </div>
   <div class="frameBar"><b>🏃 Coach Fitness</b> <span>ton app complète — profil, objectifs, repas, entraînement, suivi</span></div>
   <iframe id="frameSport" class="frameHost" title="Coach Fitness"></iframe>
 </div>
@@ -776,6 +798,7 @@ document.querySelectorAll(".navbtn").forEach(b=>{
     b.scrollIntoView({inline:"center",block:"nearest",behavior:"smooth"});
     window.scrollTo({top:0,behavior:"instant"});
     if(t==="sport"||t==="todo")loadFrame(t);
+    if(t==="sport")renderSportJournal();
     if(t==="rangs")syncRangs();
     if(t==="animes")refreshAiringAL();
   });
@@ -1919,6 +1942,114 @@ function saveMuscRec(mid){
   else flash("Record enregistré ✓");
 }
 
+/* =================================================================
+   SPORT — journal de séances, records, synchro rangs muscles + chrono
+   ================================================================= */
+const K_WORKOUTS="hub_workouts_v1", K_EXOS="hub_exos_custom_v1";
+let workouts=LS.get(K_WORKOUTS,[])||[];
+let customExos=LS.get(K_EXOS,[])||[];
+function saveWorkouts(){LS.set(K_WORKOUTS,workouts);}
+function saveCustomExos(){LS.set(K_EXOS,customExos);}
+// exos prédéfinis = les exos-repères de chaque muscle (donc reliés à un muscle => synchro rang auto)
+function baseExos(){return MUSCLES.map(m=>({id:m.id,name:m.exo,muscle:m.id,unit:m.unit}));}
+function allExos(){return [...baseExos(),...customExos];}
+function exoBest(exoId){return workouts.filter(w=>w.exoId===exoId).reduce((mx,w)=>Math.max(mx,+w.value||0),0);}
+function muscleName(mid){const m=MUSCLES.find(x=>x.id===mid);return m?m.name:"";}
+function renderSportJournal(){
+  if(!$("recordsList"))return;
+  // records par exo (seulement ceux déjà logués)
+  const logged=[...new Set(workouts.map(w=>w.exoId))];
+  const exos=allExos();
+  if(!logged.length){
+    $("recordsList").innerHTML=`<div class="empty" style="padding:18px;">Aucun record encore. Logue ta 1ʳᵉ série ⬆️</div>`;
+  }else{
+    $("recordsList").innerHTML=logged.map(eid=>{
+      const ex=exos.find(x=>x.id===eid)||{name:eid,unit:"",muscle:null};
+      const best=exoBest(eid);
+      let rankPill="";
+      if(ex.muscle){const m=MUSCLES.find(x=>x.id===ex.muscle);if(m){const t=muscTier(m);const tr=MTIERS[t];rankPill=`<span class="pill" style="background:${tr.c}22;color:${tr.c};border:1px solid ${tr.c}55;">${muscleName(ex.muscle)} · rang ${tr.g}</span>`;}}
+      return `<div class="sub-item" style="align-items:center;">
+        <div class="sub-body"><div class="sub-top"><span class="n">${esc(ex.name)}</span><span class="price">${best} ${esc(ex.unit)}</span></div>
+        <div class="sub-bot"><span class="status">${rankPill||"—"}</span></div></div>
+      </div>`;
+    }).join("");
+  }
+  // historique (20 derniers)
+  const hist=[...workouts].sort((a,b)=>(b.ts||"").localeCompare(a.ts||"")).slice(0,20);
+  $("workoutHist").innerHTML=hist.length?hist.map(w=>{
+    const ex=exos.find(x=>x.id===w.exoId);const nm=ex?ex.name:(w.exoName||w.exoId);
+    const d=w.ts?new Date(w.ts+"T00:00:00").toLocaleDateString("fr-FR",{day:"2-digit",month:"short"}):"";
+    return `<div class="checkline" data-wid="${w.id}">
+      <div class="txt"><b>${esc(nm)}</b> · <span class="gold-t">${w.value} ${esc(w.unit||"")}</span> ${w.pr?'<span class="pill gold" style="margin-left:4px;">🏅 record</span>':''}<div style="font-size:11px;color:var(--muted2);">${d}</div></div>
+      <button class="cdel" data-act="delw" style="width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,.05);color:#ff8a80;">🗑️</button>
+    </div>`;
+  }).join(""):`<div class="empty" style="padding:14px;">Rien encore.</div>`;
+  $("workoutHist").querySelectorAll('[data-act="delw"]').forEach(b=>b.addEventListener("click",()=>{
+    const id=b.closest("[data-wid]").dataset.wid;workouts=workouts.filter(w=>w.id!==id);saveWorkouts();renderSportJournal();
+  }));
+}
+function openLogWorkout(){
+  const exos=allExos();
+  const opts=exos.map(e=>`<option value="${e.id}">${esc(e.name)}${e.muscle?" ("+muscleName(e.muscle)+")":""}</option>`).join("");
+  openSheet(`
+    <button class="close-x" onclick="closeSheet()">✕</button>
+    <h3>Loguer une série</h3>
+    <label>Exercice</label>
+    <select id="w_exo">${opts}</select>
+    <div class="row">
+      <div><label>Valeur (reps / sec)</label><input type="number" id="w_val" min="0" max="100000" placeholder="ex : 30" inputmode="numeric"></div>
+    </div>
+    <button class="btn" style="margin-top:14px;" onclick="saveWorkout()">Enregistrer</button>
+    <button class="btn ghost small" style="margin-top:8px;" onclick="openNewExo()">＋ Créer un exo perso</button>
+  `);
+}
+function openNewExo(){
+  const mopts='<option value="">Aucun (pas de synchro rang)</option>'+MUSCLES.map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join("");
+  openSheet(`
+    <button class="close-x" onclick="closeSheet()">✕</button>
+    <h3>Nouvel exercice perso</h3>
+    <label>Nom</label><input type="text" id="e_name" placeholder="ex : Pompes diamant">
+    <div class="row">
+      <div><label>Unité</label><select id="e_unit"><option value="reps">reps</option><option value="sec">secondes</option></select></div>
+      <div><label>Muscle lié</label><select id="e_musc">${mopts}</select></div>
+    </div>
+    <button class="btn" style="margin-top:14px;" onclick="saveNewExo()">Créer l'exo</button>
+  `);
+}
+function saveNewExo(){
+  const name=$("e_name").value.trim();if(!name){alert("Donne un nom 😉");return;}
+  const ex={id:"cx_"+uid(),name,unit:$("e_unit").value,muscle:$("e_musc").value||null};
+  customExos.push(ex);saveCustomExos();closeSheet();openLogWorkout();
+  setTimeout(()=>{const s=$("w_exo");if(s)s.value=ex.id;},30);
+  flash("Exo créé ✓");
+}
+function saveWorkout(){
+  const exoId=$("w_exo").value;const val=Math.max(0,parseInt($("w_val").value)||0);
+  if(!val){flash("Entre une valeur 😉");return;}
+  const ex=allExos().find(x=>x.id===exoId);if(!ex)return;
+  const prevBest=exoBest(exoId);const isPR=val>prevBest;
+  workouts.push({id:"w_"+uid(),ts:todayISO(),exoId,exoName:ex.name,unit:ex.unit,value:val,pr:isPR});
+  saveWorkouts();
+  // synchro rang muscle
+  let rankUp=false;
+  if(ex.muscle){const m=MUSCLES.find(x=>x.id===ex.muscle);if(m){const before=muscTier(m);if(val>(+muscRec[m.id]||0)){muscRec[m.id]=val;saveMusc();}const after=muscTier(m);if(after>before)rankUp=true;if(typeof renderBody==="function")renderBody();}}
+  renderSportJournal();closeSheet();
+  if(rankUp){const m=MUSCLES.find(x=>x.id===ex.muscle);flash("💪 Record ! "+m.name+" → rang "+MTIERS[muscTier(m)].g+" !");}
+  else if(isPR)flash("🏅 Nouveau record : "+val+" "+ex.unit);
+  else flash("Série enregistrée ✓");
+}
+$("logWorkoutBtn").addEventListener("click",openLogWorkout);
+// ---- CHRONO ----
+let chronoInt=null,chronoSec=0,chronoRun=false;
+function chronoFmt(s){return pad(Math.floor(s/60))+":"+pad(s%60);}
+function chronoTick(){chronoSec++;$("chronoDisp").textContent=chronoFmt(chronoSec);}
+$("chronoStart").addEventListener("click",()=>{
+  chronoRun=!chronoRun;
+  if(chronoRun){chronoInt=setInterval(chronoTick,1000);$("chronoStart").textContent="⏸ Pause";}
+  else{clearInterval(chronoInt);$("chronoStart").textContent="▶︎ Reprendre";}
+});
+$("chronoReset").addEventListener("click",()=>{clearInterval(chronoInt);chronoRun=false;chronoSec=0;$("chronoDisp").textContent="00:00";$("chronoStart").textContent="▶︎ Démarrer";});
+
 /* ---- Progression : historique XP quotidien, série 🔥, courbe ---- */
 const K_XPHIST="hub_xp_hist_v1";
 function getHist(){return LS.get(K_XPHIST,{})||{};}
@@ -2155,6 +2286,7 @@ $("overlay").addEventListener("click",e=>{if(e.target===$("overlay"))closeSheet(
   $("perVal").textContent=persons;$("perEcho").textContent=persons;
   renderDishes();renderPicker();renderShop();
   renderAnimes();
+  renderSportJournal();
   const pasIn=ingestSteps();
   autoSync();renderRangs();
   if(pasIn>0){document.querySelector('.navbtn[data-tab="rangs"]').click();flash("🚶 "+pasIn.toLocaleString("fr-FR")+" pas synchronisés depuis Santé");}
