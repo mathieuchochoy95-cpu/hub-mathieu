@@ -223,6 +223,17 @@
   .anime .badges{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
   .anime .acts{display:flex;gap:6px;margin-top:9px;flex-wrap:wrap;}
   .countdown{font-weight:900;}
+  .al-results{position:absolute;left:0;right:0;top:100%;margin-top:6px;z-index:40;background:linear-gradient(180deg,#0f2049,#0b1836);
+    border:1px solid var(--line);border-radius:12px;max-height:340px;overflow-y:auto;box-shadow:0 12px 30px rgba(0,0,0,.5);}
+  .al-row{display:flex;align-items:center;gap:10px;padding:9px 11px;cursor:pointer;border-bottom:1px solid var(--line2);}
+  .al-row:last-child{border-bottom:0;}
+  .al-row:active,.al-row:hover{background:rgba(198,161,91,.1);}
+  .al-row img{width:38px;height:52px;flex:0 0 38px;border-radius:6px;object-fit:cover;background:#0a1530;}
+  .al-row .ai{flex:1;min-width:0;}
+  .al-row .ai .t{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .al-row .ai .m{font-size:11.5px;color:var(--muted);}
+  .al-row .add{flex:0 0 auto;font-size:18px;color:var(--gold-l);font-weight:900;}
+  .al-loading{padding:14px;text-align:center;color:var(--muted);font-size:13px;}
 
   /* modal */
   .overlay{position:fixed;inset:0;background:rgba(3,8,22,.7);z-index:100;display:none;align-items:flex-end;justify-content:center;}
@@ -517,8 +528,15 @@
       <p class="sub">Suis où tu en es et programme des rappels pour la sortie des prochaines saisons.</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <button class="btn gold small" id="addAnimeBtn">＋ Ajouter un anime</button>
+        <button class="btn ghost small" id="syncAnimeBtn">🔄 Synchroniser (AniList)</button>
       </div>
-      <p class="note" style="margin-top:10px;">🗓️ Pour chaque anime avec une date de sortie, un bouton <b>« Rappel calendrier »</b> apparaît : il ajoute l'alerte dans ton Calendrier iPhone, déclenchée à la date prévue même app fermée.</p>
+      <div style="margin-top:12px;position:relative;">
+        <label>🔎 Rechercher un anime dans AniList</label>
+        <input type="text" id="alSearch" placeholder="Tape un titre… (ex : jujutsu)" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <div id="alResults" class="al-results hide"></div>
+      </div>
+      <p class="note" id="animeSyncStatus" style="margin-top:8px;font-size:12px;color:var(--muted2);"></p>
+      <p class="note" style="margin-top:6px;">🗓️ Les jaquettes, statuts et dates du prochain épisode se remplissent tout seuls via AniList. Pour chaque date de sortie, un bouton <b>« Rappel calendrier »</b> ajoute l'alerte dans ton Calendrier iPhone.</p>
     </div>
     <div id="animeAlerts"></div>
     <div id="animeList"></div>
@@ -759,6 +777,7 @@ document.querySelectorAll(".navbtn").forEach(b=>{
     window.scrollTo({top:0,behavior:"instant"});
     if(t==="sport"||t==="todo")loadFrame(t);
     if(t==="rangs")syncRangs();
+    if(t==="animes")refreshAiringAL();
   });
 });
 $("hRank").addEventListener("click",()=>document.querySelector('.navbtn[data-tab="rangs"]').click());
@@ -1352,6 +1371,89 @@ function saveAnimeForm(id){
   checkAnimeNotifs();
 }
 $("addAnimeBtn").addEventListener("click",()=>editAnime(null));
+
+/* ---- AniList : encyclopédie (enrichissement + recherche) ---- */
+const AL_STATUS={RELEASING:"watching",FINISHED:"done",NOT_YET_RELEASED:"plan",CANCELLED:"paused",HIATUS:"paused"};
+function alDate(ts){const d=new Date(ts*1000);return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());}
+async function alQuery(query,variables){
+  const r=await fetch("https://graphql.anilist.co",{method:"POST",headers:{"Content-Type":"application/json","Accept":"application/json"},body:JSON.stringify({query,variables})});
+  if(r.status===429){const wait=(+r.headers.get("retry-after")||5);await new Promise(s=>setTimeout(s,(wait+1)*1000));return alQuery(query,variables);}
+  if(!r.ok)throw new Error("HTTP "+r.status);
+  const j=await r.json();if(j.errors)throw new Error(j.errors[0].message);return j.data;
+}
+const AL_MEDIA_FIELDS=`id title{romaji english} status episodes coverImage{large} nextAiringEpisode{episode airingAt} startDate{year month day}`;
+// Enrichit un objet anime depuis les données AniList (ne touche pas à ta progression saison/épisode ni ta note)
+function applyAL(a,m){
+  a.alId=m.id;
+  if(m.coverImage&&m.coverImage.large)a.cover=m.coverImage.large;
+  a.alStatus=m.status;
+  if(m.status&&AL_STATUS[m.status]&&(!a.status||a.status==="plan"||a._alManaged))a.status=AL_STATUS[m.status];
+  a._alManaged=true;
+  if(m.nextAiringEpisode){a.next=alDate(m.nextAiringEpisode.airingAt);a.nextEp=m.nextAiringEpisode.episode;}
+}
+async function syncAnimesAL(){
+  const st=$("animeSyncStatus");const total=animes.length;let done=0,ok=0;
+  st.textContent="⏳ Synchro AniList… 0/"+total;
+  for(const a of animes){
+    try{
+      let m;
+      if(a.alId){const d=await alQuery(`query($id:Int){Media(id:$id,type:ANIME){${AL_MEDIA_FIELDS}}}`,{id:a.alId});m=d.Media;}
+      else{const d=await alQuery(`query($s:String){Media(search:$s,type:ANIME){${AL_MEDIA_FIELDS}}}`,{s:a.title});m=d.Media;}
+      if(m){applyAL(a,m);ok++;}
+    }catch(e){/* on continue */}
+    done++;if(done%3===0||done===total){st.textContent="⏳ Synchro AniList… "+done+"/"+total;}
+    await new Promise(s=>setTimeout(s,750)); // throttle ~80 req/min
+  }
+  saveAnimes();renderAnimes();
+  st.textContent="✅ Synchro terminée — "+ok+"/"+total+" animes mis à jour ("+new Date().toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})+")";
+  flash("🍥 "+ok+" animes synchronisés");
+}
+$("syncAnimeBtn").addEventListener("click",()=>{if(confirm("Synchroniser tes "+animes.length+" animes avec AniList ? (jaquettes, statuts, dates — ça prend ~1 min)"))syncAnimesAL();});
+// Rafraîchit UNIQUEMENT les animes en cours de diffusion (déjà appariés) — léger, à l'ouverture de l'onglet
+let alRefreshedAt=0;
+async function refreshAiringAL(){
+  const now=Date.now();if(now-alRefreshedAt<6*3600*1000)return;alRefreshedAt=now;
+  const airing=animes.filter(a=>a.alId&&a.alStatus==="RELEASING");if(!airing.length)return;
+  let changed=false;
+  for(const a of airing){
+    try{const d=await alQuery(`query($id:Int){Media(id:$id,type:ANIME){${AL_MEDIA_FIELDS}}}`,{id:a.alId});if(d.Media){applyAL(a,d.Media);changed=true;}}catch(e){}
+    await new Promise(s=>setTimeout(s,700));
+  }
+  if(changed){saveAnimes();renderAnimes();}
+}
+// Recherche live
+let alSearchT,alLastQ="";
+async function doAlSearch(q){
+  const box=$("alResults");
+  if(!q||q.length<2){box.classList.add("hide");box.innerHTML="";return;}
+  box.classList.remove("hide");box.innerHTML=`<div class="al-loading">Recherche…</div>`;
+  try{
+    const d=await alQuery(`query($s:String){Page(perPage:8){media(search:$s,type:ANIME,sort:SEARCH_MATCH){${AL_MEDIA_FIELDS}}}}`,{s:q});
+    if(q!==alLastQ)return;
+    const list=(d.Page&&d.Page.media)||[];
+    if(!list.length){box.innerHTML=`<div class="al-loading">Aucun résultat</div>`;return;}
+    box.innerHTML=list.map(m=>{
+      const t=(m.title.english||m.title.romaji||"").replace(/"/g,"&quot;");
+      const yr=m.startDate&&m.startDate.year?m.startDate.year:"";
+      const stx={RELEASING:"En cours",FINISHED:"Terminé",NOT_YET_RELEASED:"À venir"}[m.status]||"";
+      return `<div class="al-row" data-id="${m.id}"><img src="${m.coverImage?m.coverImage.large:''}" alt=""><div class="ai"><div class="t">${esc(t)}</div><div class="m">${yr}${yr&&stx?" · ":""}${stx}${m.episodes?" · "+m.episodes+" ép.":""}</div></div><div class="add">＋</div></div>`;
+    }).join("");
+    box.querySelectorAll(".al-row").forEach(row=>row.addEventListener("click",()=>addFromAL(list.find(x=>x.id==row.dataset.id))));
+  }catch(e){box.innerHTML=`<div class="al-loading">Erreur : ${esc(e.message)}</div>`;}
+}
+function addFromAL(m){
+  if(!m)return;
+  const title=m.title.english||m.title.romaji||"Sans titre";
+  const exists=animes.find(a=>a.alId===m.id||a.title.toLowerCase()===title.toLowerCase());
+  const a=exists||{id:uid(),title,season:"",episode:"",status:"plan",next:"",cover:"",note:""};
+  applyAL(a,m);a.title=title;
+  if(!exists)animes.push(a);
+  saveAnimes();renderAnimes();checkAnimeNotifs&&checkAnimeNotifs();
+  $("alSearch").value="";$("alResults").classList.add("hide");$("alResults").innerHTML="";
+  flash(exists?"Déjà là — mis à jour ✓":"🍥 "+title+" ajouté");
+}
+$("alSearch").addEventListener("input",e=>{const q=e.target.value.trim();alLastQ=q;clearTimeout(alSearchT);alSearchT=setTimeout(()=>doAlSearch(q),350);});
+document.addEventListener("click",e=>{if(!e.target.closest("#alSearch")&&!e.target.closest("#alResults")){$("alResults").classList.add("hide");}});
 
 function pad(n){return String(n).padStart(2,"0");}
 function makeAnimeICS(id){
