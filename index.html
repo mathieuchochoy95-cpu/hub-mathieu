@@ -1418,6 +1418,7 @@ function renderAnimes(){
         <div class="prog">${a.season?"Saison "+esc(String(a.season)):""}${a.episode?" · Ép. "+esc(String(a.episode)):""}${(!a.season&&!a.episode)?"Progression non renseignée":""}</div>
         <div class="badges">
           <span class="pill ${st.c}">${st.l}</span>
+          ${a.alStatus==="RELEASING"?'<span class="pill ok">📡 En diffusion</span>':(a.alStatus==="NOT_YET_RELEASED"?'<span class="pill warn">⏳ À venir</span>':"")}
           ${cd}
         </div>
         ${a.note?`<div class="note" style="margin-top:7px;">${esc(a.note)}</div>`:""}
@@ -1473,7 +1474,6 @@ function saveAnimeForm(id){
 $("addAnimeBtn").addEventListener("click",()=>editAnime(null));
 
 /* ---- AniList : encyclopédie (enrichissement + recherche) ---- */
-const AL_STATUS={RELEASING:"watching",FINISHED:"done",NOT_YET_RELEASED:"plan",CANCELLED:"paused",HIATUS:"paused"};
 function alDate(ts){const d=new Date(ts*1000);return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());}
 async function alQuery(query,variables){
   const r=await fetch("https://graphql.anilist.co",{method:"POST",headers:{"Content-Type":"application/json","Accept":"application/json"},body:JSON.stringify({query,variables})});
@@ -1486,9 +1486,8 @@ const AL_MEDIA_FIELDS=`id title{romaji english} status episodes coverImage{large
 function applyAL(a,m){
   a.alId=m.id;
   if(m.coverImage&&m.coverImage.large)a.cover=m.coverImage.large;
-  a.alStatus=m.status;
-  if(m.status&&AL_STATUS[m.status]&&(!a.status||a.status==="plan"||a._alManaged))a.status=AL_STATUS[m.status];
-  a._alManaged=true;
+  a.alStatus=m.status;                       // statut de DIFFUSION (info) — n'écrase PAS ton statut de visionnage
+  a.alEpisodes=m.episodes||null;
   if(m.nextAiringEpisode){a.next=alDate(m.nextAiringEpisode.airingAt);a.nextEp=m.nextAiringEpisode.episode;}
 }
 async function syncAnimesAL(){
@@ -2131,7 +2130,7 @@ $("chronoReset").addEventListener("click",()=>{clearInterval(chronoInt);chronoRu
 const K_XPHIST="hub_xp_hist_v1";
 function getHist(){return LS.get(K_XPHIST,{})||{};}
 function saveHist(h){LS.set(K_XPHIST,h);}
-function recordXp(){const h=getHist();h[todayISO()]=RS.xp;saveHist(h);}
+function recordXp(){const h=getHist(),t=todayISO();if(h[t]===RS.xp)return;h[t]=RS.xp;saveHist(h);}
 function isoAdd(base,delta){const d=new Date(base+"T00:00:00");d.setDate(d.getDate()+delta);return d.toISOString().slice(0,10);}
 function xpSeries(nDays){
   const h=getHist(),days=Object.keys(h).sort(),today=todayISO(),start=isoAdd(today,-(nDays-1));
