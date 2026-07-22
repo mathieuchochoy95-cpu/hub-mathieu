@@ -685,6 +685,18 @@
 <!-- ============================= REGLAGES ============================= -->
 <div class="tab" id="tab-reglages">
   <div class="wrap">
+    <div class="card" style="border-color:rgba(84,200,255,.28);">
+      <h2><span class="dot" style="background:var(--sys);box-shadow:0 0 0 3px rgba(84,200,255,.18);"></span>☁️ Sauvegarde de ma progression</h2>
+      <p class="note" style="line-height:1.7;">Ta progression (XP, rangs, muscles, animes, séances…) est <b>sauvegardée automatiquement</b> sur ton coffre Cloudflare — la même URL que tes pas — et <b>restaurée toute seule</b> si tu réinstalles l'app ou changes de téléphone. Garde aussi une copie fichier par sécurité.</p>
+      <p class="note" id="cloudStatus" style="margin-top:8px;color:var(--muted2);font-size:12px;">☁️ En attente…</p>
+      <div class="row" style="margin-top:10px;">
+        <button class="btn small gold" id="exportBtn" style="flex:0 0 auto;">💾 Exporter (.json)</button>
+        <button class="btn small ghost" id="importBtn" style="flex:0 0 auto;">📂 Importer</button>
+        <button class="btn small ghost" id="cloudSaveBtn" style="flex:0 0 auto;">☁️ Sauvegarder maintenant</button>
+      </div>
+      <input type="file" id="importFile" accept="application/json,.json" style="display:none;">
+    </div>
+
     <div class="card">
       <h2><span class="dot"></span>📲 Installer sur l'écran d'accueil</h2>
       <p class="note" style="line-height:1.9;">
@@ -785,6 +797,71 @@ function flash(msg){const f=$("flash");f.textContent=msg||"Enregistré ✓";f.cl
 function euro(n){return (Math.round(n*100)/100).toLocaleString("fr-FR",{minimumFractionDigits:2,maximumFractionDigits:2})+" €";}
 function esc(s){return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+
+/* =================================================================
+   SAUVEGARDE CLOUD (auto) + EXPORT/IMPORT — sur le coffre Cloudflare (même URL que les pas)
+   ================================================================= */
+const K_CLOUD_TS="hub_cloud_ts";
+var backupT=null,restoring=false;
+function snapshot(){const d={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k===K_CLOUD_TS)continue;d[k]=localStorage.getItem(k);}return d;}
+function scheduleBackup(){if(restoring)return;clearTimeout(backupT);backupT=setTimeout(pushBackup,4000);}
+async function pushBackup(silent){
+  const url=(LS.get("hub_steps_url","")||"").trim();const el=$("cloudStatus");
+  if(!url){if(el)el.textContent="⚠️ Aucun coffre configuré (renseigne l'URL dans Rangs → Mes pas).";return;}
+  const ts=Date.now();
+  try{
+    if(el&&!silent)el.textContent="☁️ Sauvegarde…";
+    const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({backup:{ts,data:snapshot()}})});
+    if(!r.ok)throw new Error("HTTP "+r.status);
+    localStorage.setItem(K_CLOUD_TS,String(ts));
+    if(el)el.textContent="☁️ Sauvegardé à "+new Date(ts).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+  }catch(e){if(el)el.textContent="⚠️ Sauvegarde échouée : "+e.message;}
+}
+async function restoreFromCloud(){
+  const url=(LS.get("hub_steps_url","")||"").trim();if(!url)return;
+  try{
+    const r=await fetch(url,{cache:"no-store"});if(!r.ok)return;const j=await r.json();
+    const bk=j&&j.backup;if(!bk||!bk.data)return;
+    const localTs=+localStorage.getItem(K_CLOUD_TS)||0;
+    if((bk.ts||0)>localTs){
+      restoring=true;
+      Object.keys(bk.data).forEach(k=>{try{localStorage.setItem(k,bk.data[k]);}catch(e){}});
+      localStorage.setItem(K_CLOUD_TS,String(bk.ts));
+      location.reload();
+    }
+  }catch(e){}
+}
+function exportData(){
+  const payload={app:"MonHub",ts:Date.now(),data:snapshot()};
+  const blob=new Blob([JSON.stringify(payload)],{type:"application/json"});
+  const url=URL.createObjectURL(blob);const a=document.createElement("a");
+  a.href=url;a.download="mon-hub-sauvegarde-"+new Date().toISOString().slice(0,10)+".json";
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);
+  flash("Sauvegarde exportée 💾");
+}
+function importData(file){
+  const rd=new FileReader();
+  rd.onload=()=>{
+    try{
+      const j=JSON.parse(rd.result);const d=(j&&j.data)?j.data:j;
+      if(!d||typeof d!=="object"||Array.isArray(d))throw new Error("format");
+      if(!confirm("Restaurer cette sauvegarde ? Tes données actuelles seront remplacées."))return;
+      restoring=true;
+      Object.keys(d).forEach(k=>{try{localStorage.setItem(k,d[k]);}catch(e){}});
+      localStorage.removeItem(K_CLOUD_TS);
+      location.reload();
+    }catch(e){alert("Fichier de sauvegarde invalide.");}
+  };
+  rd.readAsText(file);
+}
+// Déclenche une sauvegarde à chaque écriture de données du Hub
+(function(){const _set=LS.set.bind(LS);LS.set=function(k,v){_set(k,v);scheduleBackup();};})();
+$("exportBtn").addEventListener("click",exportData);
+$("importBtn").addEventListener("click",()=>$("importFile").click());
+$("importFile").addEventListener("change",e=>{if(e.target.files[0])importData(e.target.files[0]);e.target.value="";});
+$("cloudSaveBtn").addEventListener("click",()=>pushBackup());
+// capture aussi les changements des apps Sport/To-Do (iframes) au moment où tu quittes l'app
+document.addEventListener("visibilitychange",()=>{if(document.hidden)pushBackup(true);});
 
 /* ---------- NAVIGATION ---------- */
 let framesLoaded={sport:false,todo:false};
@@ -2280,6 +2357,7 @@ $("overlay").addEventListener("click",e=>{if(e.target===$("overlay"))closeSheet(
    INIT
    ================================================================= */
 (function init(){
+  restoreFromCloud();  // restaure depuis le cloud si une sauvegarde plus récente existe (recharge la page le cas échéant)
   const b=LS.get(K_BIRTH,"");if(b){$("birth").value=b;calcAge();}
   renderSubs();
   renderMemo();
@@ -2292,6 +2370,8 @@ $("overlay").addEventListener("click",e=>{if(e.target===$("overlay"))closeSheet(
   if(pasIn>0){document.querySelector('.navbtn[data-tab="rangs"]').click();flash("🚶 "+pasIn.toLocaleString("fr-FR")+" pas synchronisés depuis Santé");}
   // Récupération réseau des pas au démarrage (webhook N8N), silencieuse
   fetchSteps().then(added=>{if(added>0){autoSync();renderRangs();}});
+  // Sauvegarde cloud initiale (capture l'état au démarrage), non bloquante
+  setTimeout(()=>{if(!restoring)pushBackup(true);},6000);
   // PWA : service worker (installation écran d'accueil + usage hors-ligne)
   if("serviceWorker" in navigator && location.protocol.indexOf("http")===0){
     navigator.serviceWorker.register("./sw.js").catch(()=>{});
