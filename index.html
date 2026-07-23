@@ -239,6 +239,16 @@
   .fchip{flex:0 0 auto;background:rgba(255,255,255,.05);border:1px solid var(--line2);color:var(--muted);
     padding:7px 14px;border-radius:999px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;}
   .fchip.active{background:linear-gradient(135deg,var(--red),var(--red-d));color:#fff;border-color:var(--red);}
+  /* ---- ASSISTANT IA ---- */
+  .ia-chat{min-height:180px;max-height:52vh;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:6px 2px;margin-bottom:10px;}
+  .ia-msg{max-width:88%;padding:10px 13px;border-radius:14px;font-size:14px;line-height:1.5;white-space:pre-wrap;word-wrap:break-word;}
+  .ia-msg.user{align-self:flex-end;background:linear-gradient(135deg,var(--red),var(--red-d));color:#fff;border-bottom-right-radius:4px;}
+  .ia-msg.bot{align-self:flex-start;background:rgba(3,10,28,.6);border:1px solid rgba(84,200,255,.2);color:#e7edf8;border-bottom-left-radius:4px;}
+  .ia-msg.bot b{color:var(--gold-l);}
+  .ia-empty{text-align:center;color:var(--muted);font-size:13.5px;padding:24px 12px;}
+  .ia-input{display:flex;gap:8px;align-items:flex-end;}
+  .ia-input textarea{flex:1;resize:none;max-height:120px;font-size:15px;}
+  .ia-typing{align-self:flex-start;color:var(--sys);font-size:13px;padding:6px 4px;}
 
   /* modal */
   .overlay{position:fixed;inset:0;background:rgba(3,8,22,.7);z-index:100;display:none;align-items:flex-end;justify-content:center;}
@@ -413,6 +423,7 @@
     <button class="navbtn" data-tab="infos"><span class="ic">📌</span> Infos utiles</button>
     <button class="navbtn" data-tab="courses"><span class="ic">🛒</span> Courses</button>
     <button class="navbtn" data-tab="animes"><span class="ic">🍥</span> Animes</button>
+    <button class="navbtn" data-tab="ia"><span class="ic">🤖</span> Assistant</button>
     <button class="navbtn" data-tab="reglages"><span class="ic">⚙️</span> Réglages</button>
   </div>
 </nav>
@@ -763,6 +774,28 @@
   </div>
 </div>
 
+<!-- ============================= ASSISTANT IA ============================= -->
+<div class="tab" id="tab-ia">
+  <div class="wrap">
+    <div class="card" style="border-color:rgba(84,200,255,.28);">
+      <h2><span class="dot" style="background:var(--sys);box-shadow:0 0 0 3px rgba(84,200,255,.18);"></span>🤖 Mon assistant</h2>
+      <p class="sub">Ton coach sport &amp; nutrition, générateur de séances/repas, et assistant — il connaît ton rang, tes records et ta liste d'animes.</p>
+      <div class="navscroll" id="iaQuick" style="padding:0;margin-bottom:10px;">
+        <button class="fchip" data-q="Génère-moi ma séance de callisthénie du jour, adaptée à mon niveau et mon matériel.">🏋️ Séance du jour</button>
+        <button class="fchip" data-q="Donne-moi une idée de repas riche en protéines pour ma recomposition, simple à préparer.">🍗 Idée repas</button>
+        <button class="fchip" data-q="D'après ma liste d'animes, qu'est-ce que je pourrais regarder ensuite ? Propose 3 titres avec une phrase chacun.">🍥 Que regarder ?</button>
+        <button class="fchip" data-q="Fais le point sur ma progression et donne-moi 3 conseils pour la semaine.">📊 Mes conseils</button>
+      </div>
+      <div id="iaChat" class="ia-chat"></div>
+      <div class="ia-input">
+        <textarea id="iaText" rows="1" placeholder="Pose ta question…"></textarea>
+        <button class="btn small gold" id="iaSend" style="flex:0 0 auto;">➤</button>
+      </div>
+      <p class="note" id="iaHint" style="margin-top:8px;font-size:12px;color:var(--muted2);"></p>
+    </div>
+  </div>
+</div>
+
 <!-- ============================= REGLAGES ============================= -->
 <div class="tab" id="tab-reglages">
   <div class="wrap">
@@ -958,6 +991,7 @@ document.querySelectorAll(".navbtn").forEach(b=>{
     if(t==="sport"||t==="todo")loadFrame(t);
     if(t==="sport")renderSportJournal();
     if(t==="accueil")renderHome();
+    if(t==="ia")renderChat();
     if(t==="rangs")syncRangs();
     if(t==="animes")refreshAiringAL();
   });
@@ -2514,6 +2548,56 @@ $("stepSyncNow").addEventListener("click",()=>{
 function openSheet(html){$("sheet").innerHTML=html;$("overlay").classList.add("show");}
 function closeSheet(){$("overlay").classList.remove("show");}
 $("overlay").addEventListener("click",e=>{if(e.target===$("overlay"))closeSheet();});
+
+/* =================================================================
+   ASSISTANT IA — chat contextuel via Worker Cloudflare -> Gemini
+   ================================================================= */
+let aiMessages=[],aiBusy=false;
+function buildAICtx(){
+  const idx=rankIndex(RS.xp),r=RANKS[idx];
+  const recs=MUSCLES.map(m=>{const v=+muscRec[m.id]||0;return v?`${m.name} ${v} ${m.unit} (rang ${MTIERS[muscTier(m)].g})`:null;}).filter(Boolean).join(", ")||"aucun record enregistré pour l'instant";
+  const watching=animes.filter(a=>a.status==="watching").map(a=>a.title).slice(0,8).join(", ")||"aucun";
+  const planN=animes.filter(a=>a.status==="plan").length;
+  return `Tu es l'assistant personnel de Mathieu dans son app "Mon Hub". Réponds en français, de façon concise, concrète et bienveillante. Tu es à la fois son coach sport & nutrition (callisthénie), un générateur de séances et de repas, un assistant généraliste et un conseiller animes.
+CONTEXTE (utilise-le si pertinent, ne le récite pas) :
+- Objectif : passer de skinny-fat à un corps athlétique, tracé et fort (recomposition).
+- Matériel : barre de traction, barre de dips, poignées de pompes, roue abdominale, élastiques d'assistance jusqu'à 35 kg, haltères 3 et 5 kg, disques ~20 kg.
+- Niveau : débutant, 5 séances/semaine possibles.
+- Gamification : rang ${r.name}, ${RS.xp} XP.
+- Records muscu : ${recs}.
+- Animes en cours : ${watching}. Nombre d'animes "à voir" : ${planN}.
+Nutrition : rappelle si utile ~1,6-2 g de protéines/kg/jour. Reste honnête, pas de promesses irréalistes, et précise que tu n'es pas médecin pour les questions de santé.`;
+}
+function aiFmt(t){return esc(t).replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").replace(/\n/g,"<br>");}
+function renderChat(){
+  const box=$("iaChat");if(!box)return;
+  if(!aiMessages.length&&!aiBusy){box.innerHTML=`<div class="ia-empty">👋 Salut Mathieu ! Pose-moi une question ou touche un bouton rapide au-dessus.</div>`;}
+  else{box.innerHTML=aiMessages.map(m=>`<div class="ia-msg ${m.role==="user"?"user":"bot"}">${aiFmt(m.content)}</div>`).join("")+(aiBusy?`<div class="ia-typing">✍️ écrit…</div>`:"");}
+  box.scrollTop=box.scrollHeight;
+}
+async function sendAI(text){
+  text=(text||"").trim();if(!text||aiBusy)return;
+  const url=(LS.get(K_STEPS_URL,"")||"").trim();
+  if(!url){$("iaHint").textContent="⚠️ Renseigne l'URL de ton coffre (onglet Rangs → Mes pas → Synchro auto) et déploie le Worker avec ta clé Gemini (voir la notice).";return;}
+  aiMessages.push({role:"user",content:text});aiBusy=true;renderChat();
+  const ta=$("iaText");if(ta){ta.value="";ta.style.height="auto";}
+  try{
+    const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ai:{system:buildAICtx(),messages:aiMessages.slice(-12)}})});
+    if(!r.ok)throw new Error("HTTP "+r.status);
+    const j=await r.json();
+    const reply=(j&&j.reply)?j.reply:(j&&j.error?("⚠️ "+j.error):"Réponse vide.");
+    aiMessages.push({role:"assistant",content:reply});
+  }catch(e){aiMessages.push({role:"assistant",content:"⚠️ Impossible de joindre l'assistant : "+e.message+". Vérifie que ton Worker est à jour avec la clé Gemini."});}
+  aiBusy=false;renderChat();
+}
+(function(){
+  const s=$("iaSend");if(s)s.addEventListener("click",()=>sendAI($("iaText").value));
+  const ta=$("iaText");if(ta){
+    ta.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendAI(ta.value);}});
+    ta.addEventListener("input",()=>{ta.style.height="auto";ta.style.height=Math.min(120,ta.scrollHeight)+"px";});
+  }
+  const q=$("iaQuick");if(q)q.querySelectorAll(".fchip").forEach(c=>c.addEventListener("click",()=>sendAI(c.dataset.q)));
+})();
 
 /* =================================================================
    INIT
