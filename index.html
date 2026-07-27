@@ -483,6 +483,7 @@
 <!-- ============================= SPORT ============================= -->
 <div class="tab frameTab" id="tab-sport">
   <div class="wrap" style="padding:16px 16px 0;">
+    <div id="progHost"></div>
     <div class="card">
       <h2><span class="dot"></span>⏱️ Chrono</h2>
       <div style="text-align:center;">
@@ -989,7 +990,7 @@ document.querySelectorAll(".navbtn").forEach(b=>{
     b.scrollIntoView({inline:"center",block:"nearest",behavior:"smooth"});
     window.scrollTo({top:0,behavior:"instant"});
     if(t==="sport"||t==="todo")loadFrame(t);
-    if(t==="sport")renderSportJournal();
+    if(t==="sport"){renderProgram();renderSportJournal();}
     if(t==="accueil")renderHome();
     if(t==="ia")renderChat();
     if(t==="rangs")syncRangs();
@@ -2256,6 +2257,283 @@ $("chronoStart").addEventListener("click",()=>{
 });
 $("chronoReset").addEventListener("click",()=>{clearInterval(chronoInt);chronoRun=false;chronoSec=0;$("chronoDisp").textContent="00:00";$("chronoStart").textContent="▶︎ Démarrer";});
 
+/* =================================================================
+   PROGRAMME — planning piloté par les dates, évolue tout seul
+   Échéances de Mathieu 2026 : prépa vacances → reprise taff →
+   Japon → volley club. Coupures Autriche & Japon gérées auto.
+   ================================================================= */
+const K_PROGDONE="hub_prog_done_v1";
+function progGetDone(){return LS.get(K_PROGDONE,{})||{};}
+function progSetDone(o){LS.set(K_PROGDONE,o);}
+
+const PROG_PHASES=[
+  {id:"prep",name:"Prépa intensive",tag:"Vacances",emoji:"🔥",start:"2026-08-03",end:"2026-08-20",freq:6,maxMin:null,
+   intro:"Vacances = volume max. On pose la base : force au poids du corps + fond de course. 6 j/7, dimanche off.",
+   sched:{lun:"push",mar:"runEF",mer:"legs",jeu:"runINT",ven:"pull",sam:"runLONG",dim:"rest"}},
+  {id:"work1",name:"Reprise — séances du soir",tag:"Boulot",emoji:"🌆",start:"2026-08-21",end:"2026-09-13",freq:5,maxMin:60,
+   intro:"Retour au taff : séances courtes le soir, 1 h max, 5 j/7. On entretient et on progresse sans se cramer.",
+   sched:{lun:"push",mar:"runEF",mer:"pull",jeu:"rest",ven:"legs",sam:"runINT",dim:"rest"}},
+  {id:"club",name:"Volley club + Calisthénie",tag:"Rythme de croisière",emoji:"🏐",start:"2026-10-16",end:null,freq:6,maxMin:75,
+   intro:"Taff + volley en club. Structure fixe de la semaine, 6 j/7, dimanche off. Le volley couvre beaucoup les jambes/explosivité.",
+   sched:{lun:"push",mar:"volley",mer:"pull",jeu:"volley",ven:"full",sam:"runEF",dim:"rest"}}
+];
+const PROG_BREAKS=[
+  {id:"austria",name:"Autriche — PSG",emoji:"✈️",start:"2026-08-11",end:"2026-08-13",
+   note:"Coupure : match du PSG. Zéro entraînement, et c'est parfait — marche dans la ville, hydrate-toi, dors bien. Le repos fait partie du plan."},
+  {id:"japan",name:"Japon",emoji:"🗾",start:"2026-09-14",end:"2026-10-15",
+   note:"1 mois sans entraînement structuré — mais tu vas marcher énormément (souvent 15–25 000 pas/j) : ta base cardio est entretenue. Bonus si l'envie vient : 5 min de mobilité le matin, 20 pompes. Sans pression."}
+];
+
+const PROG_WK=["dim","lun","mar","mer","jeu","ven","sam"];
+const PROG_WKLABEL={lun:"Lun",mar:"Mar",mer:"Mer",jeu:"Jeu",ven:"Ven",sam:"Sam",dim:"Dim"};
+function progWeekday(iso){return PROG_WK[new Date(iso+"T12:00:00").getDay()];}
+function progInRange(iso,a,b){return iso>=a&&(b===null||iso<=b);}
+function progPhaseOn(iso){return PROG_PHASES.find(p=>progInRange(iso,p.start,p.end))||null;}
+function progBreakOn(iso){return PROG_BREAKS.find(b=>progInRange(iso,b.start,b.end))||null;}
+function progDaysBetween(a,b){return Math.round((new Date(b+"T12:00:00")-new Date(a+"T12:00:00"))/864e5);}
+function progPhaseWeek(iso,ph){return Math.floor(progDaysBetween(ph.start,iso)/7)+1;}
+function progFmtDate(iso){return new Date(iso+"T12:00:00").toLocaleDateString("fr-FR",{day:"numeric",month:"long"});}
+function progFmtShort(iso){return new Date(iso+"T12:00:00").toLocaleDateString("fr-FR",{day:"numeric",month:"short"});}
+
+function progRamp(iso,ph){
+  const since=progDaysBetween(ph.start,iso);
+  if(ph.id==="prep"&&since<5)return{t:"start",msg:"Démarrage en douceur (5 premiers jours) : tu es débutant, la priorité c'est la TECHNIQUE propre. Fais 1 série de moins si besoin et note tes vraies reps — on augmentera dès la 2ᵉ semaine."};
+  const prevBreak=PROG_BREAKS.find(b=>{const g=progDaysBetween(b.end,ph.start);return g>=1&&g<=3;});
+  if(prevBreak){const len=progDaysBetween(prevBreak.start,prevBreak.end);if(len>=14&&since<11)return{t:"reprise",msg:"⚠️ Reprise après le Japon (1 mois off) : tes tendons et articulations ont perdu l'habitude. Fais −30 à −40 % de volume les 10 premiers jours (2 séries au lieu de 3–4), puis remonte. C'est LE moment où on se blesse en repartant trop fort."};}
+  return null;
+}
+
+/* --- Course : allures depuis le test VMA de Coach Fitness si dispo --- */
+function progVMA(){try{return JSON.parse(localStorage.getItem("cf_vma"));}catch(e){return null;}}
+function progPace(mpk){const m=Math.floor(mpk),s=Math.round((mpk-m)*60);return m+":"+String(s).padStart(2,"0");}
+function progAllureEF(){const v=progVMA();return v?progPace(60/(v.v*0.68))+"–"+progPace(60/(v.v*0.62))+"/km":null;}
+function progAllureVMA(){const v=progVMA();return v?(Math.round(v.v*0.92*10)/10)+"–"+v.v+" km/h":null;}
+
+/* --- Contenu des séances (débutant : 15 pompes, 0 traction, 0 dip) --- */
+const PROG_SESSIONS={
+  push:{title:"Haut du corps — Pousser",emoji:"💪",focus:"Pecs · Épaules · Triceps",
+    warm:"5 min : rotations d'épaules, cercles de poignets, 2×10 pompes lentes, band pull-apart ×15.",
+    exos:[
+      {n:"Pompes",s:"4 × max (vise 12–18)",rest:"90 s",cue:"Gainage serré, corps aligné, poitrine à ~5 cm du sol, 2 s à la descente. Quand tu tiens 4×18 propres → pompes déclinées (pieds surélevés)."},
+      {n:"Dips négatives (barre à dips)",s:"3 × 4–5",rest:"2 min",cue:"Pars bras tendus en haut, descends TRÈS lentement (4–5 s) le plus bas possible, puis aide-toi d'un petit saut / des pieds pour remonter. 👉 Ton chemin direct vers le 1er dip. Trop dur ? Passe un élastique sous les pieds (dips assistés)."},
+      {n:"Pompes piquées (pike)",s:"3 × 8–10",rest:"90 s",cue:"Bassin haut, corps en V inversé, la tête descend entre les mains → épaules."},
+      {n:"Pompes serrées / diamant (poignées)",s:"3 × 8–12",rest:"90 s",cue:"Mains rapprochées sous la poitrine → triceps. Les poignées ménagent tes poignets."},
+      {n:"Gainage planche",s:"3 × 40–60 s",rest:"60 s",cue:"Corps parfaitement droit, fessiers et abdos serrés, ne creuse pas le bas du dos."}
+    ]},
+  pull:{title:"Haut du corps — Tirer",emoji:"🔩",focus:"Dos · Biceps · Avant-bras",
+    warm:"5 min : suspension 2×15 s, cercles de bras, band pull-apart ×15, 10 rowings à vide.",
+    exos:[
+      {n:"Suspension active (dead hang)",s:"3 × max (vise 30–45 s)",rest:"90 s",cue:"Suspends-toi bras tendus, épaules basses et actives (pas molles). Grip + épaules = la base de la traction."},
+      {n:"Tractions négatives",s:"3 × 3–5",rest:"2 min",cue:"Monte-toi menton au-dessus de la barre (saut ou chaise), puis descends LENTEMENT en 4–5 s. 👉 Le meilleur exo pour aller chercher ta 1re traction."},
+      {n:"Tractions assistées élastique",s:"3 × 6–8",rest:"2 min",cue:"Élastique sur la barre, un pied dedans. En supination (paumes vers toi) = dos + biceps. Réduis l'assistance semaine après semaine."},
+      {n:"Rowing australien (tirage horizontal)",s:"3 × 10–12",rest:"90 s",cue:"Barre calée bas (ou sous une table solide), corps gainé en planche, tire la poitrine vers la barre en serrant les omoplates."},
+      {n:"Curl biceps (haltères 3/5 kg ou élastique)",s:"3 × 12",rest:"60 s",cue:"Coudes fixes, pas d'élan, contrôle la descente."},
+      {n:"Face pull élastique",s:"3 × 15",rest:"60 s",cue:"Tire l'élastique vers le front, coudes hauts → épaules arrière + posture. Indispensable quand on fait beaucoup de pompes."}
+    ]},
+  legs:{title:"Bas du corps",emoji:"🦵",focus:"Quadris · Fessiers · Ischios · Mollets",
+    warm:"5 min : 30 squats à vide lents, 10 fentes marchées, cercles de hanches.",
+    exos:[
+      {n:"Squats",s:"4 × 15–20",rest:"90 s",cue:"Cuisses parallèles au sol, poids sur les talons, dos droit. Trop facile ? → goblet squat, un haltère/disque contre la poitrine."},
+      {n:"Fentes marchées",s:"3 × 10 / jambe",rest:"90 s",cue:"Grand pas, genou arrière vers le sol, buste droit. Charge avec les haltères quand c'est fluide."},
+      {n:"Squat bulgare (pied arrière sur la barre à dips)",s:"3 × 8 / jambe",rest:"90 s",cue:"Pied arrière surélevé, tu descends sur la jambe avant → gros travail quadris + fessiers. Haltères/disque en main pour charger."},
+      {n:"Hip thrust / pont fessier",s:"3 × 15",rest:"90 s",cue:"Épaules calées (banc ou sol), disque de 20 kg sur le bassin, monte les hanches et serre fort les fessiers 1 s en haut."},
+      {n:"Ischios : good morning élastique (ou pont sur 1 jambe)",s:"3 × 10–12",rest:"90 s",cue:"Charnière de hanche, dos plat, tu sens l'arrière des cuisses tirer."},
+      {n:"Mollets debout (sur une marche, disque en main)",s:"4 × 20",rest:"45 s",cue:"Amplitude complète : monte haut sur la pointe, descends bien le talon sous la marche."}
+    ]},
+  full:{title:"Poids du corps complet — circuit",emoji:"⚡",focus:"Corps entier + cardio",circuit:true,
+    warm:"5 min : mobilité générale + 10 pompes + 10 squats.",
+    note:"3 à 4 tours en enchaînant les exos, 90 s de repos entre chaque tour. Objectif : tout le corps + un peu de cardio.",
+    exos:[
+      {n:"Pompes",s:"12",cue:""},{n:"Tractions assistées élastique",s:"6–8",cue:""},
+      {n:"Squats",s:"20",cue:""},{n:"Dips négatives",s:"5",cue:""},
+      {n:"Relevés de genoux suspendus (barre)",s:"10",cue:""},{n:"Gainage planche",s:"40 s",cue:""}
+    ]}
+};
+
+function progRunSession(key,ph,pw){
+  const efMax=ph.id==="prep"?55:(ph.maxMin?45:45);
+  if(key==="runEF"){
+    const m=Math.max(30,Math.min(efMax,30+(pw-1)*5));
+    const al=progAllureEF();
+    return{title:"Course — Endurance fondamentale",emoji:"🏃",focus:"Fond · cardio",
+      lines:[al?("Allure : "+al+" · RPE 4–6 (tu dois pouvoir parler en courant)"):"À un rythme où tu peux parler (RPE 4–6). Débutant : alterne 2 min course / 1 min marche si besoin, puis allonge peu à peu la partie courue.",
+             "Durée : "+m+" min à allure lente et régulière.","Finis par 5 min de marche + étirements mollets/quadris."],
+      vmaHint:!al}; }
+  if(key==="runINT"){
+    const r=Math.max(6,Math.min(10,6+(pw-1)));
+    const al=progAllureVMA();
+    return{title:"Course — Fractionné (VMA)",emoji:"⚡",focus:"Vitesse · souffle",
+      lines:["Échauffement : 10 min footing très lent + 3–4 accélérations progressives.",
+             r+" × (45 s "+(al?("rapide @ "+al):"rapide — essoufflé mais contrôlé, RPE 8/10")+" / 1 min 15 lent).",
+             "Retour au calme : 5 min footing lent."],
+      vmaHint:!al}; }
+  // runLONG
+  const m=Math.max(35,Math.min(80,35+(pw-1)*5));
+  const al=progAllureEF();
+  return{title:"Course — Sortie longue",emoji:"🌄",focus:"Endurance",
+    lines:[al?("Allure : "+al+" (encore plus tranquille que d'habitude)"):"Très lent, tu dois pouvoir tenir une conversation tout du long.",
+           "Durée : "+m+" min en continu, terrain plat de préférence.","Hydrate-toi, et marche si besoin plutôt que t'arrêter net."],
+    vmaHint:!al};
+}
+
+function progDayMini(key){
+  if(key==="rest")return{i:"😴",c:"#9fb0d0"};
+  if(key==="volley")return{i:"🏐",c:"#f97316"};
+  if(key==="runEF"||key==="runLONG")return{i:"🏃",c:"#3b82f6"};
+  if(key==="runINT")return{i:"⚡",c:"#eab308"};
+  if(key==="full")return{i:"⚡",c:"#a78bfa"};
+  const S=PROG_SESSIONS[key];return{i:S?S.emoji:"💪",c:"#C6A15B"};
+}
+
+function progRenderSession(iso){
+  const br=progBreakOn(iso);
+  if(br)return`<div class="card" style="border:1px solid #f9731655;background:linear-gradient(135deg,#1a1330,#0f2049);">
+    <h2><span class="dot" style="background:#f97316"></span>${br.emoji} ${esc(br.name)} — coupure</h2>
+    <p class="sub" style="line-height:1.7;margin-top:6px;">${esc(br.note)}</p></div>`;
+  const ph=progPhaseOn(iso);
+  const wd=progWeekday(iso);
+  if(!ph){
+    // avant le début du programme
+    const first=PROG_PHASES[0];
+    if(iso<first.start){
+      const j=progDaysBetween(iso,first.start);
+      return`<div class="card" style="border:1px solid #C6A15B55;">
+        <h2><span class="dot"></span>⏳ Le programme démarre bientôt</h2>
+        <p class="sub" style="line-height:1.7;">1re séance : <b>lundi ${progFmtDate(first.start)}</b> — dans <b>${j} jour${j>1?"s":""}</b>. En attendant : bouge, marche, et repose-toi. Tu peux déjà lire ta séance du 1er jour (Pousser) dans la vue de la semaine ci-dessous.</p></div>`;
+    }
+    return`<div class="card"><h2><span class="dot"></span>Aucune séance programmée aujourd'hui</h2><p class="sub">Journée libre — repos ou marche.</p></div>`;
+  }
+  const key=ph.sched[wd];
+  const pw=progPhaseWeek(iso,ph);
+  const ramp=progRamp(iso,ph);
+  const done=!!progGetDone()[iso];
+  const isToday=iso===todayISO();
+
+  if(key==="rest")return`<div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <h2 style="margin:0;"><span class="dot" style="background:#9fb0d0"></span>😴 Repos</h2>
+      <span class="pill" style="background:#9fb0d022;color:#9fb0d0;">${ph.emoji} ${esc(ph.tag)}</span></div>
+    <p class="sub" style="margin-top:8px;line-height:1.7;">Jour off — c'est là que le muscle se construit. Étire-toi 10 min, marche, dors bien. Reviens plus fort demain.</p></div>`;
+
+  if(key==="volley")return`<div class="card" style="border:1px solid #f9731644;">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <h2 style="margin:0;"><span class="dot" style="background:#f97316"></span>🏐 Volley — club</h2>
+      <span class="pill" style="background:#f9731622;color:#f97316;">${ph.emoji} ${esc(ph.tag)}</span></div>
+    <p class="sub" style="margin-top:8px;line-height:1.7;">Séance en club. Échauffe bien épaules, chevilles et poignets avant de jouer, hydrate-toi, et étire-toi après. Le volley te fait bosser jambes, explosivité et coordination — c'est ton cardio + pliométrie du jour.</p>
+    ${progDoneBtn(iso,done,isToday)}</div>`;
+
+  let body="",headEmoji="🏃",headTitle="Course",focus="";
+  if(key.startsWith("run")){
+    const R=progRunSession(key,ph,pw);headEmoji=R.emoji;headTitle=R.title;focus=R.focus;
+    body=`<ul style="list-style:none;padding:0;margin:10px 0 0;">`+R.lines.map(l=>`<li style="padding:8px 0;border-bottom:1px solid var(--border);line-height:1.6;">${esc(l)}</li>`).join("")+`</ul>`;
+    if(R.vmaHint)body+=`<p class="note" style="margin-top:10px;font-size:12px;color:#eab308;">💡 Je n'ai pas tes temps de référence : les allures sont données au ressenti (RPE). Fais le <b>test VMA</b> (demi-Cooper) dans le bloc plus bas de Coach Fitness → toutes tes allures deviendront précises et calées sur TOI.</p>`;
+  } else {
+    const S=PROG_SESSIONS[key];if(!S)return"";
+    headEmoji=S.emoji;headTitle=S.title;focus=S.focus;
+    body=`<p class="note" style="margin:8px 0 4px;font-size:12px;">🔥 Échauffement — ${esc(S.warm)}</p>`;
+    if(S.note)body+=`<p class="sub" style="margin:6px 0;">${esc(S.note)}</p>`;
+    body+=`<div style="margin-top:8px;">`+S.exos.map((e,i)=>`
+      <div style="padding:11px 0;border-bottom:1px solid var(--border);">
+        <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline;">
+          <b style="font-size:14px;">${i+1}. ${esc(e.n)}</b>
+          <span class="gold-t" style="white-space:nowrap;font-weight:800;">${esc(e.s)}</span></div>
+        ${e.cue?`<div style="font-size:12.5px;color:var(--muted);line-height:1.55;margin-top:4px;">${esc(e.cue)}</div>`:""}
+        ${e.rest?`<div style="font-size:11px;color:var(--muted2);margin-top:3px;">Repos : ${esc(e.rest)}</div>`:""}
+      </div>`).join("")+`</div>`;
+  }
+
+  return`<div class="card" style="border:1px solid #C6A15B44;">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+      <h2 style="margin:0;"><span class="dot"></span>${headEmoji} ${esc(headTitle)}</h2>
+      <span class="pill" style="background:#C6A15B22;color:var(--gold-l);border:1px solid #C6A15B55;">${ph.emoji} ${esc(ph.tag)} · S${pw}</span></div>
+    ${focus?`<p class="sub" style="margin-top:4px;">${esc(focus)}${ph.maxMin?" · ⏱️ "+ph.maxMin+" min max":""}</p>`:""}
+    ${ramp?`<div style="margin:10px 0;padding:10px 12px;border-radius:10px;background:${ramp.t==="reprise"?"#ef444418":"#3b82f618"};border:1px solid ${ramp.t==="reprise"?"#ef444455":"#3b82f655"};font-size:12.5px;line-height:1.55;">${esc(ramp.msg)}</div>`:""}
+    ${body}
+    ${progDoneBtn(iso,done,isToday)}
+  </div>`;
+}
+
+function progDoneBtn(iso,done,isToday){
+  if(!isToday)return"";
+  if(done)return`<div style="margin-top:14px;text-align:center;padding:10px;border-radius:10px;background:#22c55e18;color:#22c55e;font-weight:700;">✅ Séance validée aujourd'hui — bien joué 💪</div>`;
+  return`<button class="btn gold" style="margin-top:14px;" onclick="progMarkDone('${iso}')">✅ Séance faite (+25 XP)</button>
+    <p class="note" style="margin-top:6px;font-size:11px;">Pense à noter tes records dans le journal ci-dessous → ça fait monter tes rangs muscles.</p>`;
+}
+
+function progMarkDone(iso){
+  const d=progGetDone();if(d[iso]){return;}
+  d[iso]=true;progSetDone(d);
+  const key="prog_"+iso;
+  if(!RS.creditedKeys)RS.creditedKeys={};
+  if(!RS.creditedKeys[key]){RS.creditedKeys[key]=true;RS.autoXP=(RS.autoXP||0)+25;grant(25);}
+  if(typeof recordXp==="function")recordXp();
+  renderProgram();
+  flash("💪 Séance validée !");
+}
+
+function progRenderWeek(iso){
+  // semaine en cours (lundi → dimanche) autour de la date
+  const dow=new Date(iso+"T12:00:00").getDay();const mondayOffset=dow===0?-6:1-dow;
+  const monday=isoAdd(iso,mondayOffset);
+  const done=progGetDone();
+  let cells="";
+  for(let i=0;i<7;i++){
+    const dISO=isoAdd(monday,i);const wd=PROG_WK[new Date(dISO+"T12:00:00").getDay()];
+    const br=progBreakOn(dISO);const ph=progPhaseOn(dISO);
+    let mini,label;
+    if(br){mini={i:br.emoji,c:"#f97316"};}
+    else if(!ph){mini={i:"–",c:"#54617e"};}
+    else {mini=progDayMini(ph.sched[wd]);}
+    const isTod=dISO===todayISO();const isDone=!!done[dISO];
+    cells+=`<div style="flex:1;text-align:center;padding:8px 2px;border-radius:10px;${isTod?"background:#C6A15B22;border:1px solid #C6A15B66;":"border:1px solid var(--border);"}">
+      <div style="font-size:10px;color:var(--muted2);font-weight:700;">${PROG_WKLABEL[wd]}</div>
+      <div style="font-size:18px;margin:3px 0;color:${mini.c};">${mini.i}</div>
+      <div style="font-size:9px;color:var(--muted2);">${new Date(dISO+"T12:00:00").getDate()}${isDone?' <span style="color:#22c55e;">✓</span>':""}</div>
+    </div>`;
+  }
+  return`<div class="card"><div class="section-title" style="margin-top:0;">📅 Ta semaine</div>
+    <div style="display:flex;gap:5px;">${cells}</div></div>`;
+}
+
+function progRenderTimeline(iso){
+  const today=todayISO();
+  const items=[];
+  PROG_PHASES.forEach(p=>items.push({s:p.start,e:p.end,name:p.name,tag:p.tag,emoji:p.emoji,kind:"phase"}));
+  PROG_BREAKS.forEach(b=>items.push({s:b.start,e:b.end,name:b.name,tag:"Coupure",emoji:b.emoji,kind:"break"}));
+  items.sort((a,b)=>a.s.localeCompare(b.s));
+  const rows=items.map(it=>{
+    let state,col;
+    if(it.e&&today>it.e){state="Terminé";col="#54617e";}
+    else if(progInRange(today,it.s,it.e)){const left=it.e?progDaysBetween(today,it.e):null;state=left!=null?("En cours · "+(left+1)+" j restants"):"En cours";col=it.kind==="break"?"#f97316":"#C6A15B";}
+    else{const j=progDaysBetween(today,it.s);state="Dans "+j+" j";col="#9fb0d0";}
+    const range=progFmtShort(it.s)+(it.e?" → "+progFmtShort(it.e):" →");
+    return`<div style="display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--border);">
+      <div style="font-size:16px;">${it.emoji}</div>
+      <div style="flex:1;"><div style="font-weight:700;font-size:13px;">${esc(it.name)}</div>
+        <div style="font-size:11px;color:var(--muted2);">${range}</div></div>
+      <span class="pill" style="background:${col}22;color:${col};border:1px solid ${col}55;white-space:nowrap;font-size:10px;">${state}</span>
+    </div>`;
+  }).join("");
+  return`<div class="card"><div class="section-title" style="margin-top:0;">🗓️ Tes échéances</div>
+    <p class="sub" style="margin:-4px 0 8px;">Le programme s'adapte tout seul à ces dates.</p>${rows}</div>`;
+}
+
+function renderProgram(){
+  const host=$("progHost");if(!host)return;
+  const iso=todayISO();
+  const ph=progPhaseOn(iso);const br=progBreakOn(iso);
+  let banner="";
+  if(!br&&ph){
+    banner=`<div class="card" style="background:linear-gradient(135deg,#122a5c,#0f2049);border:1px solid #C6A15B55;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+        <div><div style="font-size:11px;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;">Phase en cours</div>
+          <div style="font-size:17px;font-weight:800;color:var(--gold-l);">${ph.emoji} ${esc(ph.name)}</div></div>
+        <span class="pill" style="background:#C6A15B22;color:var(--gold-l);border:1px solid #C6A15B55;">${ph.freq} j/7</span></div>
+      <p class="sub" style="margin-top:8px;line-height:1.6;">${esc(ph.intro)}</p></div>`;
+  }
+  host.innerHTML=banner+progRenderSession(iso)+progRenderWeek(iso)+progRenderTimeline(iso);
+}
+
 /* ---- Progression : historique XP quotidien, série 🔥, courbe ---- */
 const K_XPHIST="hub_xp_hist_v1";
 function getHist(){return LS.get(K_XPHIST,{})||{};}
@@ -2611,6 +2889,7 @@ async function sendAI(text){
   renderDishes();renderPicker();renderShop();
   renderAnimes();
   renderSportJournal();
+  renderProgram();
   renderHome();
   const pasIn=ingestSteps();
   autoSync();renderRangs();snapshotRanks();
