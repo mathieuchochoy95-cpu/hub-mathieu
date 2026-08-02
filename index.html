@@ -2431,7 +2431,7 @@ function progDayMini(key){
   const S=PROG_SESSIONS[key];return{i:S?S.emoji:"💪",c:"#C6A15B"};
 }
 
-function progRenderSession(iso){
+function progRenderSession(iso,forceInputs){
   const br=progBreakOn(iso);
   if(br)return`<div class="card" style="border:1px solid #f9731655;background:linear-gradient(135deg,#1a1330,#0f2049);">
     <h2><span class="dot" style="background:#f97316"></span>${br.emoji} ${esc(br.name)} — coupure</h2>
@@ -2439,13 +2439,15 @@ function progRenderSession(iso){
   const ph=progPhaseOn(iso);
   const wd=progWeekday(iso);
   if(!ph){
-    // avant le début du programme
+    // avant le début du programme → compte à rebours + APERÇU interactif de la 1re séance
     const first=PROG_PHASES[0];
     if(iso<first.start){
       const j=progDaysBetween(iso,first.start);
-      return`<div class="card" style="border:1px solid #C6A15B55;">
+      const head=`<div class="card" style="border:1px solid #C6A15B55;">
         <h2><span class="dot"></span>⏳ Le programme démarre bientôt</h2>
-        <p class="sub" style="line-height:1.7;">1re séance : <b>lundi ${progFmtDate(first.start)}</b> — dans <b>${j} jour${j>1?"s":""}</b>. En attendant : bouge, marche, et repose-toi. Tu peux déjà lire ta séance du 1er jour (Pousser) dans la vue de la semaine ci-dessous.</p></div>`;
+        <p class="sub" style="line-height:1.7;">1re séance : <b>lundi ${progFmtDate(first.start)}</b> — dans <b>${j} jour${j>1?"s":""}</b>. Voici ta 1re séance ci-dessous : tu vois déjà les exos et les champs de saisie. Ce que tu valides est enregistré et ajuste tes objectifs (l'auto-régulation tourne dès que tu commences).</p></div>
+        <div style="margin:6px 2px 4px;font-size:12px;color:var(--muted2);font-weight:700;">👇 APERÇU — Séance du lundi ${progFmtDate(first.start)}</div>`;
+      return head+progRenderSession(first.start,true);
     }
     return`<div class="card"><h2><span class="dot"></span>Aucune séance programmée aujourd'hui</h2><p class="sub">Journée libre — repos ou marche.</p></div>`;
   }
@@ -2454,6 +2456,7 @@ function progRenderSession(iso){
   const ramp=progRamp(iso,ph);
   const done=!!progGetDone()[iso];
   const isToday=iso===todayISO();
+  const showInputs=isToday||forceInputs;
 
   if(key==="rest")return`<div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -2473,7 +2476,7 @@ function progRenderSession(iso){
     const R=progRunSession(key,ph);headEmoji=R.emoji;headTitle=R.title;focus=R.focus;
     body=`<ul style="list-style:none;padding:0;margin:10px 0 0;">`+R.lines.map(l=>`<li style="padding:8px 0;border-bottom:1px solid var(--border);line-height:1.6;">${esc(l)}</li>`).join("")+`</ul>`;
     if(R.noVMA)body+=`<p class="note" style="margin-top:10px;font-size:12px;color:#eab308;">💡 Allures au ressenti (RPE) pour l'instant. Note ta <b>distance</b> sur une sortie ci-dessous → je calcule tes allures automatiquement. (Encore plus précis : le <b>test VMA</b> dans Coach Fitness plus bas.)</p>`;
-    if(isToday)body+=`
+    if(showInputs)body+=`
       <div style="margin-top:12px;font-size:11.5px;color:var(--muted2);">Comment c'était ? J'ajuste ta prochaine sortie ${R.type==="int"?"(nombre d'intervalles)":"(durée)"}.</div>
       <div style="display:flex;gap:6px;margin-top:6px;">
         <button class="btn small ghost" style="flex:1;margin:0;padding:8px 4px;" onclick="progRunFeedback('${R.type}','hard')">😓 Trop dur</button>
@@ -2508,7 +2511,7 @@ function progRenderSession(iso){
         ${e.cue?`<div style="font-size:12.5px;color:var(--muted);line-height:1.55;margin-top:4px;">${esc(e.cue)}</div>`:""}
         ${capReached&&e.next?`<div style="font-size:11.5px;color:#22c55e;line-height:1.5;margin-top:4px;">${esc(e.next)}</div>`:""}
         <div style="font-size:11px;color:var(--muted2);margin-top:5px;">${lastLine}${e.rest?" · Repos "+esc(e.rest):""}</div>
-        ${isToday?`<div style="display:flex;gap:6px;margin-top:6px;align-items:center;">
+        ${showInputs?`<div style="display:flex;gap:6px;margin-top:6px;align-items:center;">
           <input id="plog_${e.k}" type="number" inputmode="numeric" min="0" placeholder="ta meilleure série (${e.type==="hold"?"sec":"reps"})" style="flex:1;background:var(--card2);border:1px solid var(--border);border-radius:8px;color:var(--txt);padding:7px 10px;font-size:13px;">
           <button class="btn small gold" style="flex:0 0 auto;padding:7px 14px;margin:0;" onclick="progLogExo('${e.k}')">Valider</button></div>`:""}
       </div>`;
