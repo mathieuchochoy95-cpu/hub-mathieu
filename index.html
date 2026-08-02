@@ -2703,7 +2703,92 @@ function renderProgram(){
         <span class="pill" style="background:#C6A15B22;color:var(--gold-l);border:1px solid #C6A15B55;">${ph.freq} j/7</span></div>
       <p class="sub" style="margin-top:8px;line-height:1.6;">${esc(ph.intro)}</p></div>`;
   }
-  host.innerHTML=banner+progRenderSession(iso)+progRenderWeek(iso)+progRenderHistory()+progRenderTimeline(iso);
+  host.innerHTML=banner+progRenderSession(iso)+progAddCard()+progRenderWeek(iso)+progRenderHistory()+progRenderTimeline(iso);
+}
+
+/* --- Ajouter une séance (en plus de celle du jour) --- */
+const K_PROGEXTRA="hub_prog_extra_v1";
+function progGetExtra(){return LS.get(K_PROGEXTRA,{})||{};}
+function progAddExtra(iso,obj){const all=progGetExtra();(all[iso]=all[iso]||[]).push(obj);LS.set(K_PROGEXTRA,all);}
+function progDelExtra(iso,id){const all=progGetExtra();if(all[iso]){all[iso]=all[iso].filter(x=>x.id!==id);if(!all[iso].length)delete all[iso];LS.set(K_PROGEXTRA,all);}renderProgram();flash("Séance supprimée");}
+function progAddCard(){
+  return`<div class="card">
+    <div class="section-title" style="margin-top:0;">➕ Ajouter une séance</div>
+    <p class="sub" style="margin:-4px 0 8px;">En plus de celle du jour. Un même jour peut compter 2 séances.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn small ghost" style="flex:1;margin:0;" onclick="progAddOpen('course')">🏃 Course</button>
+      <button class="btn small ghost" style="flex:1;margin:0;" onclick="progAddOpen('cali')">💪 Calisthénie</button>
+      <button class="btn small ghost" style="flex:1;margin:0;" onclick="progAddOpen('volley')">🏐 Volley</button>
+    </div></div>`;
+}
+function progAddOpen(kind){
+  const dsel=`<label>Date</label><input type="date" id="ax_date" value="${todayISO()}">`;
+  if(kind==="volley"){
+    openSheet(`<button class="close-x" onclick="closeSheet()">✕</button>
+      <h3>🏐 Ajouter une séance de volley</h3>${dsel}
+      <label>Note (optionnel)</label><input type="text" id="ax_note" placeholder="ex : match, entraînement club…">
+      <p class="sub" style="margin-top:8px;">Séance de volley en club.</p>
+      <button class="btn" style="margin-top:12px;" onclick="progSaveVolley()">Enregistrer la séance</button>`);
+  } else if(kind==="course"){
+    openSheet(`<button class="close-x" onclick="closeSheet()">✕</button>
+      <h3>🏃 Ajouter une séance de course</h3>${dsel}
+      <label>Type</label><select id="ax_rtype"><option value="ef">Endurance fondamentale</option><option value="int">Fractionné / VMA</option><option value="long">Sortie longue</option><option value="libre">Libre</option></select>
+      <div class="row">
+        <div><label>Durée (min)</label><input type="number" id="ax_dur" inputmode="numeric" placeholder="ex : 40"></div>
+        <div><label>Distance (km)</label><input type="number" step="0.1" id="ax_km" inputmode="decimal" placeholder="ex : 7,2"></div>
+      </div>
+      <label>Ressenti</label><select id="ax_verd"><option value="">—</option><option value="easy">😎 facile</option><option value="ok">👍 ok</option><option value="hard">😓 dur</option></select>
+      <label>Note (optionnel)</label><input type="text" id="ax_note" placeholder="ex : tibia sensible, chaud…">
+      <button class="btn" style="margin-top:12px;" onclick="progSaveCourse()">Enregistrer la séance</button>`);
+  } else {
+    openSheet(`<button class="close-x" onclick="closeSheet()">✕</button>
+      <h3>💪 Ajouter une séance de calisthénie</h3>${dsel}
+      <div id="ax_exos"></div>
+      <button class="btn ghost small" style="margin-top:8px;" onclick="progAddExoRow()">＋ Ajouter un exercice</button>
+      <button class="btn" style="margin-top:12px;" onclick="progSaveCali()">Enregistrer la séance</button>`);
+    progAddExoRow();
+  }
+}
+function progAddExoRow(){
+  const c=$("ax_exos");if(!c)return;
+  const div=document.createElement("div");
+  div.style.cssText="border:1px solid var(--border);border-radius:10px;padding:10px;margin-top:8px;position:relative;";
+  div.innerHTML=`<button onclick="this.parentElement.remove()" style="position:absolute;top:6px;right:6px;background:none;border:none;color:#ff8a80;font-size:16px;cursor:pointer;">✕</button>
+    <label>Exercice</label><input type="text" class="axc_n" placeholder="ex : Pompes">
+    <div class="row">
+      <div><label>Séries</label><input type="number" class="axc_sets" inputmode="numeric" placeholder="4"></div>
+      <div><label>Reps / série</label><input type="text" class="axc_reps" placeholder="ex : 12,11,10"></div>
+      <div><label>Repos</label><input type="text" class="axc_rest" placeholder="90 s"></div>
+    </div>`;
+  c.appendChild(div);
+}
+function progSaveCourse(){
+  const date=$("ax_date").value||todayISO();
+  const rtype=$("ax_rtype").value;
+  const dur=parseInt($("ax_dur").value)||null;
+  const km=parseFloat(($("ax_km").value||"").replace(",","."))||null;
+  const verdict=$("ax_verd").value||null;
+  const note=($("ax_note").value||"").trim();
+  progAddExtra(date,{id:"rx_"+uid(),kind:"course",rtype,dur,km,verdict,note});
+  if((rtype==="ef"||rtype==="long")&&km>0&&dur>0){const R=progGetRun();const est=(km/(dur/60))/0.65;if(est>=8&&est<=22){const n=R.vmaEstN||0;R.vmaEst=Math.round((R.vmaEst?((R.vmaEst*n+est)/(n+1)):est)*10)/10;R.vmaEstN=n+1;progSetRun(R);}}
+  closeSheet();grant(25);recordXp();renderProgram();flash("🏃 Séance de course ajoutée (+25 XP)");
+}
+function progSaveVolley(){
+  const date=$("ax_date").value||todayISO();const note=($("ax_note").value||"").trim();
+  progAddExtra(date,{id:"vx_"+uid(),kind:"volley",note});
+  closeSheet();grant(25);recordXp();renderProgram();flash("🏐 Séance de volley ajoutée (+25 XP)");
+}
+function progSaveCali(){
+  const date=$("ax_date").value||todayISO();
+  const rows=[...document.querySelectorAll("#ax_exos > div")];
+  const exos=rows.map(r=>{
+    const n=(r.querySelector(".axc_n").value||"").trim();
+    if(!n)return null;
+    return {n,sets:(r.querySelector(".axc_sets").value||"").trim(),reps:(r.querySelector(".axc_reps").value||"").trim(),rest:(r.querySelector(".axc_rest").value||"").trim()};
+  }).filter(Boolean);
+  if(!exos.length){flash("Ajoute au moins un exercice 😉");return;}
+  progAddExtra(date,{id:"cx_"+uid(),kind:"cali",exos});
+  closeSheet();grant(25);recordXp();renderProgram();flash("💪 Séance de calisthénie ajoutée (+25 XP)");
 }
 
 /* --- Historique : revoir ses résultats séance par séance --- */
@@ -2711,40 +2796,51 @@ let progHistOpen=false;
 function progHistToggle(){progHistOpen=!progHistOpen;const el=$("progHistBody");if(el)el.style.display=progHistOpen?"block":"none";const btn=$("progHistBtn");if(btn)btn.textContent=progHistOpen?"Masquer":"Voir";}
 const PROG_RUNLBL={ef:"🏃 Endurance",int:"⚡ Fractionné",long:"🌄 Sortie longue"};
 const PROG_VERDICT={hard:"😓 dur",ok:"👍 ok",easy:"😎 facile"};
+const PROG_RTYPE={ef:"🏃 Endurance",int:"⚡ Fractionné",long:"🌄 Sortie longue",libre:"🏃 Course libre"};
 function progRenderHistory(){
-  const sets=progGetSets();const runlog=progGetRunLog();
-  const dset=new Set([...Object.keys(sets),...Object.keys(runlog)]);
+  const sets=progGetSets();const runlog=progGetRunLog();const extra=progGetExtra();
+  const dset=new Set([...Object.keys(sets),...Object.keys(runlog),...Object.keys(extra)]);
   const dates=[...dset].filter(d=>{
     const day=sets[d]||{};const hasCali=Object.keys(day).some(k=>progBestOf(day[k])!=null);
-    return hasCali||runlog[d];
+    return hasCali||runlog[d]||(extra[d]&&extra[d].length);
   }).sort(); // ancien → récent
   if(!dates.length)return`<div class="card"><div class="section-title" style="margin-top:0;">📖 Historique de mes séances</div><p class="sub">Tes résultats (calisthénie ET course) s'enregistreront ici jour par jour, dès ta 1re séance. Tu pourras revenir voir n'importe quelle semaine.</p></div>`;
+  let total=0;
   const rows=dates.map(d=>{
-    const day=sets[d]||{};
-    let items=Object.keys(day).map(k=>{
+    const day=sets[d]||{};let items=[];let cnt=0;
+    // séance de calisthénie planifiée (loguée par série)
+    const cali=Object.keys(day).map(k=>{
       const a=day[k]||[];const best=progBestOf(a);if(best==null)return"";
       const def=progExoDef(k);const nm=def?def.n:k;const u=def&&def.type==="hold"?" s":"";
       const seq=a.map(v=>(v==null||v==="")?"–":v).join(" · ");
-      return`<div style="font-size:12px;margin:3px 0;line-height:1.4;"><span style="color:var(--muted);">${esc(nm)}</span> — ${esc(seq)} <span class="gold-t" style="font-weight:800;">(max ${best}${u})</span></div>`;
+      return`<div style="font-size:12px;margin:2px 0;line-height:1.4;"><span style="color:var(--muted);">${esc(nm)}</span> — ${esc(seq)} <span class="gold-t" style="font-weight:800;">(max ${best}${u})</span></div>`;
     }).filter(Boolean);
+    if(cali.length){cnt++;items.push(`<div style="margin:4px 0;"><b style="font-size:12px;">💪 Calisthénie</b>${cali.join("")}</div>`);}
+    // sortie course planifiée
     const rl=runlog[d];
-    if(rl){
-      const parts=[];
-      if(rl.dur)parts.push(rl.dur+" min");
-      if(rl.reps)parts.push(rl.reps+" intervalles");
-      if(rl.km)parts.push((""+rl.km).replace(".",",")+" km");
-      if(rl.verdict&&PROG_VERDICT[rl.verdict])parts.push("ressenti "+PROG_VERDICT[rl.verdict]);
-      items.push(`<div style="font-size:12px;margin:3px 0;line-height:1.4;"><span style="color:var(--muted);">${PROG_RUNLBL[rl.type]||"🏃 Course"}</span> — ${esc(parts.join(" · ")||"séance faite")}</div>`);
-    }
+    if(rl){cnt++;const parts=[];if(rl.dur)parts.push(rl.dur+" min");if(rl.reps)parts.push(rl.reps+" intervalles");if(rl.km)parts.push((""+rl.km).replace(".",",")+" km");if(rl.verdict&&PROG_VERDICT[rl.verdict])parts.push("ressenti "+PROG_VERDICT[rl.verdict]);
+      items.push(`<div style="font-size:12px;margin:4px 0;line-height:1.4;"><b>${PROG_RTYPE[rl.type]||"🏃 Course"}</b> — ${esc(parts.join(" · ")||"séance faite")}</div>`);}
+    // séances ajoutées manuellement
+    (extra[d]||[]).forEach(s=>{cnt++;
+      let inner="";
+      if(s.kind==="course"){const parts=[];if(s.dur)parts.push(s.dur+" min");if(s.km)parts.push((""+s.km).replace(".",",")+" km");if(s.verdict&&PROG_VERDICT[s.verdict])parts.push("ressenti "+PROG_VERDICT[s.verdict]);if(s.note)parts.push(s.note);
+        inner=`<b>${PROG_RTYPE[s.rtype]||"🏃 Course"}</b> <span style="font-size:10px;color:var(--muted2);">(ajoutée)</span> — ${esc(parts.join(" · ")||"séance faite")}`;}
+      else if(s.kind==="volley"){inner=`<b>🏐 Volley en club</b> <span style="font-size:10px;color:var(--muted2);">(ajoutée)</span>${s.note?" — "+esc(s.note):""}`;}
+      else if(s.kind==="cali"){const ex=(s.exos||[]).map(e=>`<div style="font-size:12px;margin:2px 0;color:var(--muted);">${esc(e.n)} — ${esc([e.sets&&e.sets+" séries",e.reps&&e.reps+" reps",e.rest&&"repos "+e.rest].filter(Boolean).join(" · "))}</div>`).join("");
+        inner=`<b style="font-size:12px;">💪 Calisthénie</b> <span style="font-size:10px;color:var(--muted2);">(ajoutée)</span>${ex}`;}
+      items.push(`<div style="font-size:12px;margin:4px 0;line-height:1.4;position:relative;padding-right:22px;">${inner}<button onclick="progDelExtra('${d}','${s.id}')" style="position:absolute;top:0;right:0;background:none;border:none;color:#ff8a80;font-size:13px;cursor:pointer;">🗑️</button></div>`);
+    });
     if(!items.length)return"";
+    total+=cnt;
     const dd=new Date(d+"T12:00:00").toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"});
-    return`<div style="padding:10px 0;border-bottom:1px solid var(--border);"><div style="font-weight:800;font-size:12.5px;margin-bottom:4px;text-transform:capitalize;color:var(--gold-l);">${dd}</div>${items.join("")}</div>`;
+    const badge=cnt>1?` <span class="pill" style="background:#f9731622;color:#f97316;font-size:10px;">${cnt} séances</span>`:"";
+    return`<div style="padding:10px 0;border-bottom:1px solid var(--border);"><div style="font-weight:800;font-size:12.5px;margin-bottom:4px;text-transform:capitalize;color:var(--gold-l);">${dd}${badge}</div>${items.join("")}</div>`;
   }).filter(Boolean).join("");
   return`<div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
       <div class="section-title" style="margin:0;">📖 Historique de mes séances</div>
       <button class="progMini" id="progHistBtn" onclick="progHistToggle()">${progHistOpen?"Masquer":"Voir"}</button></div>
-    <p class="sub" style="margin:4px 0 0;">${dates.length} séance${dates.length>1?"s":""} loguée${dates.length>1?"s":""} · retrouve n'importe quelle semaine.</p>
+    <p class="sub" style="margin:4px 0 0;">${total} séance${total>1?"s":""} au total · retrouve n'importe quelle semaine.</p>
     <div id="progHistBody" style="display:${progHistOpen?"block":"none"};margin-top:8px;">${rows}</div></div>`;
 }
 
