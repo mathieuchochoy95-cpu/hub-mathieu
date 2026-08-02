@@ -482,6 +482,26 @@
 
 <!-- ============================= SPORT ============================= -->
 <div class="tab frameTab" id="tab-sport">
+  <style>
+    .progSet{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--card2);color:var(--muted);font-size:12px;font-weight:800;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;}
+    .progSet.on{background:linear-gradient(135deg,#C6A15B,#a9863f);color:#1a1200;border-color:#C6A15B;}
+    .progMini{flex:0 0 auto;background:var(--card2);border:1px solid var(--border);color:var(--txt);border-radius:8px;padding:7px 11px;font-size:12px;font-weight:600;cursor:pointer;}
+    .progMini:active{transform:scale(.96);}
+    .progInfo{margin-top:8px;padding:11px 13px;border-radius:10px;background:var(--card2);border:1px solid #C6A15B44;font-size:12.5px;line-height:1.6;}
+    .progInfo.hidden{display:none;}
+    .progInfo b{color:var(--gold-l);}
+    #progTimer{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);z-index:9999;background:linear-gradient(135deg,#122a5c,#0f2049);border:2px solid #C6A15B;border-radius:16px;padding:12px 24px;box-shadow:0 10px 34px rgba(0,0,0,.55);text-align:center;min-width:140px;}
+    #progTimer.hidden{display:none;}
+    #progTimer.fini{border-color:#22c55e;}
+    #progTimerLbl{font-size:10px;letter-spacing:.5px;color:var(--muted2);text-transform:uppercase;}
+    #progTimerVal{font-size:28px;font-weight:900;color:var(--gold-l);line-height:1.1;margin:2px 0;}
+    #progTimer.fini #progTimerVal{color:#22c55e;}
+  </style>
+  <div id="progTimer" class="hidden">
+    <div id="progTimerLbl">Repos</div>
+    <div id="progTimerVal">—</div>
+    <button class="progMini" style="margin-top:6px;padding:4px 14px;" onclick="progStopTimer()">Stop</button>
+  </div>
   <div class="wrap" style="padding:16px 16px 0;">
     <div id="progHost"></div>
     <div class="card">
@@ -1012,7 +1032,24 @@ function loadFrame(which){
   const [pid,fid]=map[which];
   try{
     const html=b64ToUtf8($(pid).textContent);
-    $(fid).setAttribute("srcdoc",html);
+    const fr=$(fid);
+    if(which==="sport"){
+      // Masque l'ancien programme d'entraînement de Coach Fitness :
+      // on ne garde plus qu'UN seul plan (le module Programme en haut).
+      // Le reste (profil, objectifs, repas, pesées, test VMA, outils) est conservé.
+      fr.addEventListener("load",()=>{try{
+        const d=fr.contentDocument;if(!d)return;
+        if(!d.getElementById("hubHideTraining")){
+          const st=d.createElement("style");st.id="hubHideTraining";
+          st.textContent='.tab-btn[data-tab="training"]{display:none!important}#tab-training{display:none!important}';
+          d.head.appendChild(st);
+        }
+        // si l'onglet training était actif, bascule sur le profil
+        const tb=d.getElementById("tab-training");
+        if(tb&&tb.classList.contains("active")){const pb=d.querySelector('.tab-btn[data-tab="profil"]');if(pb)pb.click();}
+      }catch(e){}},{once:false});
+    }
+    fr.setAttribute("srcdoc",html);
     framesLoaded[which]=true;
   }catch(e){
     $(fid).setAttribute("srcdoc","<body style='font-family:sans-serif;padding:24px;color:#b00'>Impossible de charger cette app.</body>");
@@ -2306,28 +2343,38 @@ function progRamp(iso,ph){
 /* --- Course : auto-régulée. Allures depuis le test VMA si fait,
    sinon depuis la VMA ESTIMÉE (tes distances loguées), sinon au ressenti. --- */
 const K_PROGRUN="hub_prog_run_v1";
-function progGetRun(){const d=LS.get(K_PROGRUN,null);return d&&d.ef?d:{ef:30,int:6,long:35,vmaEst:null,vmaEstN:0};}
+// Défauts calés sur les données réelles de Mathieu (carnet "Forge Your Body" S4-S8) :
+// coureur confirmé (5 km ~24:30, EF 60-70 min), VMA estimée ~14,5 km/h depuis son fractionné.
+// Volumes de reprise volontairement prudents (break + tibias sensibles) → l'auto-régulation monte vite.
+function progGetRun(){const d=LS.get(K_PROGRUN,null);return d&&d.ef?d:{ef:40,int:6,long:50,vmaEst:14.5,vmaEstN:1};}
 function progSetRun(o){LS.set(K_PROGRUN,o);}
 function progVMA(){try{return JSON.parse(localStorage.getItem("cf_vma"));}catch(e){return null;}}
 function progVMAval(){const t=progVMA();if(t&&t.v)return{v:t.v,src:"test"};const r=progGetRun();if(r.vmaEst)return{v:r.vmaEst,src:"est"};return null;}
 function progPace(mpk){const m=Math.floor(mpk),s=Math.round((mpk-m)*60);return m+":"+String(s).padStart(2,"0");}
 function progAllureEF(){const x=progVMAval();return x?progPace(60/(x.v*0.68))+"–"+progPace(60/(x.v*0.62))+"/km":null;}
 function progAllureVMA(){const x=progVMAval();return x?(Math.round(x.v*0.92*10)/10)+"–"+(Math.round(x.v*10)/10)+" km/h":null;}
+/* Journal des sorties course, par date */
+const K_PROGRUNLOG="hub_prog_runlog_v1";
+function progGetRunLog(){return LS.get(K_PROGRUNLOG,{})||{};}
+function progRunLog(type,data){const iso=todayISO();const all=progGetRunLog();const e=all[iso]=all[iso]||{};e.type=type;Object.assign(e,data);LS.set(K_PROGRUNLOG,all);}
 function progRunFeedback(type,verdict){
-  const R=progGetRun();const ph=progPhaseOn(todayISO());const capEF=ph&&ph.id==="prep"?55:50;
+  const R=progGetRun();const ph=progPhaseOn(todayISO());const capEF=ph&&ph.id==="prep"?60:55;
+  const doneVal=type==="int"?R.int:(type==="ef"?R.ef:R.long); // ce qui était prévu aujourd'hui
+  progRunLog(type,{verdict,dur:type==="int"?null:doneVal,reps:type==="int"?doneVal:null});
   if(type==="ef")R.ef=Math.max(20,Math.min(capEF,R.ef+(verdict==="easy"?5:verdict==="ok"?3:0)));
-  else if(type==="long")R.long=Math.max(25,Math.min(80,R.long+(verdict==="easy"?5:verdict==="ok"?3:0)));
+  else if(type==="long")R.long=Math.max(25,Math.min(85,R.long+(verdict==="easy"?5:verdict==="ok"?3:0)));
   else if(type==="int")R.int=Math.max(4,Math.min(12,R.int+(verdict==="easy"?2:verdict==="ok"?1:0)));
   progSetRun(R);renderProgram();
-  flash(verdict==="hard"?"→ On maintient, pas de surcharge":verdict==="ok"?"↗︎ Progression calée":"↗︎ On monte la prochaine sortie");
+  flash(verdict==="hard"?"Sortie notée ✓ → on maintient":verdict==="ok"?"Sortie notée ✓ → progression calée":"Sortie notée ✓ → on monte la prochaine");
 }
 function progRunDist(type){
   const el=document.getElementById("prdist_"+type);if(!el)return;
   const km=parseFloat((el.value||"").replace(",","."));if(!(km>0)){flash("Entre la distance en km 😉");return;}
   const R=progGetRun();const mins=type==="ef"?R.ef:type==="long"?R.long:null;
+  progRunLog(type,{km,dur:mins});
   if(mins){const speed=km/(mins/60),est=speed/0.65;
-    if(est>=8&&est<=22){const n=R.vmaEstN||0;R.vmaEst=Math.round((R.vmaEst?((R.vmaEst*n+est)/(n+1)):est)*10)/10;R.vmaEstN=n+1;progSetRun(R);renderProgram();flash("🏃 Allures estimées : VMA ~"+R.vmaEst+" km/h");return;}}
-  flash("Distance notée ✓");
+    if(est>=8&&est<=22){const n=R.vmaEstN||0;R.vmaEst=Math.round((R.vmaEst?((R.vmaEst*n+est)/(n+1)):est)*10)/10;R.vmaEstN=n+1;progSetRun(R);renderProgram();flash("🏃 "+km+" km noté · VMA estimée ~"+R.vmaEst+" km/h");return;}}
+  renderProgram();flash("🏃 "+km+" km noté ✓");
 }
 
 /* --- Contenu des séances (débutant : 15 pompes, 0 traction, 0 dip) --- */
@@ -2337,31 +2384,32 @@ const PROG_SESSIONS={
   push:{title:"Haut du corps — Pousser",emoji:"💪",focus:"Pecs · Épaules · Triceps",
     warm:"5 min : rotations d'épaules, cercles de poignets, 2×10 pompes lentes, band pull-apart ×15.",
     exos:[
-      {k:"pompes",n:"Pompes",sets:4,type:"reps",base:15,step:2,cap:30,musc:"pecs",rest:"90 s",next:"Cap atteint 💥 → passe aux pompes déclinées (pieds surélevés) et repars vers 15.",cue:"Gainage serré, corps aligné, poitrine à ~5 cm du sol, 2 s à la descente."},
-      {k:"dips_neg",n:"Dips négatives (barre à dips)",sets:3,type:"reps",base:5,step:1,cap:12,rest:"2 min",next:"🎯 Tu es prêt pour les dips assistés élastique, puis ton 1er dip complet.",cue:"Pars bras tendus en haut, descends TRÈS lentement (4–5 s) le plus bas possible, puis aide-toi d'un petit saut / des pieds pour remonter. Ton chemin direct vers le 1er dip."},
-      {k:"pike",n:"Pompes piquées (pike)",sets:3,type:"reps",base:8,step:1,cap:20,musc:"epaules",rest:"90 s",next:"Cap atteint → pike push-ups pieds surélevés.",cue:"Bassin haut, corps en V inversé, la tête descend entre les mains → épaules."},
-      {k:"diamant",n:"Pompes serrées / diamant (poignées)",sets:3,type:"reps",base:10,step:1,cap:20,rest:"90 s",next:"Cap atteint → ajoute une pause de 2 s en bas.",cue:"Mains rapprochées sous la poitrine → triceps. Les poignées ménagent tes poignets."},
-      {k:"planche",n:"Gainage planche",sets:3,type:"hold",base:40,step:5,cap:120,musc:"abdos",rest:"60 s",next:"Cap atteint → planche sur un avant-bras / avec lest.",cue:"Corps parfaitement droit, fessiers et abdos serrés, ne creuse pas le bas du dos."}
+      {k:"pompes",n:"Pompes",sets:4,type:"reps",base:12,step:1,cap:25,musc:"pecs",rest:"90 s",next:"Cap atteint 💥 → passe aux pompes déclinées (pieds surélevés) et repars vers 12.",cue:"Vise ~10-12/série sur les 4 séries (ta 1re série peut monter plus haut). Gainage serré, poitrine à ~5 cm du sol, 2 s à la descente.",how:"Mains largeur d'épaules, doigts écartés. Corps gainé de la tête aux talons (fessiers + abdos serrés). Descends en 2 s jusqu'à frôler le sol de la poitrine, coudes à ~45° du corps (pas écartés à 90°). Pousse fort pour remonter sans casser l'alignement.\n⚠️ Erreur classique : les fesses qui montent ou le bas du dos qui creuse.",easier:"Trop dur en fin de série ? Termine sur les genoux. Trop facile ? Pieds surélevés (déclinées)."},
+      {k:"dips_neg",n:"Dips négatives (barre à dips)",sets:3,type:"reps",base:5,step:1,cap:12,rest:"2 min",next:"🎯 Tu es prêt pour les dips assistés élastique, puis ton 1er dip complet.",cue:"Descends TRÈS lentement (4–5 s), aide-toi des pieds pour remonter. Ton chemin direct vers le 1er dip.",how:"Place-toi entre les barres, bras tendus, corps légèrement penché en avant. Descends LE PLUS LENTEMENT possible (4–5 s) en pliant les coudes vers l'arrière, jusqu'à ce que tes épaules arrivent au niveau des coudes. En bas, aide-toi d'un petit saut / de tes pieds pour revenir en haut, puis recommence une descente lente.",easier:"Trop dur ? Fais des dips sur banc : mains derrière toi sur un banc/une chaise, pieds au sol devant."},
+      {k:"pike",n:"Pompes piquées (pike)",sets:3,type:"reps",base:8,step:1,cap:20,musc:"epaules",rest:"90 s",next:"Cap atteint → pike push-ups pieds surélevés.",cue:"Bassin haut, corps en V inversé, la tête descend entre les mains → épaules.",how:"Pieds et mains au sol, monte le bassin le plus haut possible pour former un V inversé (position 'chien tête en bas'). Le poids est sur les mains. Fléchis les coudes pour amener le SOMMET de ta tête vers le sol entre tes mains, regard entre les pieds, puis repousse. C'est un exo d'épaules, pas de pecs.",easier:"⭐ Tu galères (c'est normal, c'est dur) → 2 options : 1) Mains SURÉLEVÉES sur un canapé/lit → beaucoup moins de charge sur les épaules, commence là et baisse la hauteur au fil des semaines. 2) Remplace carrément par du développé épaules haltères assis (tes 3/5 kg) : assis dos droit, monte les haltères au-dessus de la tête, 3×12. Tu reviendras aux pike quand tes épaules seront plus fortes."},
+      {k:"diamant",n:"Pompes serrées / diamant (poignées)",sets:3,type:"reps",base:10,step:1,cap:20,rest:"90 s",next:"Cap atteint → ajoute une pause de 2 s en bas.",cue:"Mains rapprochées sous la poitrine → triceps. Les poignées ménagent tes poignets.",how:"Mains jointes sous la poitrine formant un triangle (pouces et index qui se touchent). Coudes SERRÉS le long du corps pendant toute la descente. Descends contrôlé, remonte en poussant fort. Ça cible les triceps.",easier:"Trop dur ? Mains surélevées, ou pompes serrées classiques (mains rapprochées mais sans le triangle)."},
+      {k:"planche",n:"Gainage planche",sets:3,type:"hold",base:35,step:5,cap:120,musc:"abdos",rest:"60 s",next:"Cap atteint → planche sur un avant-bras / avec lest.",cue:"Corps parfaitement droit, fessiers et abdos serrés, ne creuse pas le bas du dos.",how:"Sur les avant-bras, coudes juste sous les épaules. Corps parfaitement droit : ni fesses en l'air, ni bas du dos creusé. Serre abdos + fessiers + cuisses, respire normalement, regarde le sol. Tiens la position.",easier:"Trop dur ? Planche sur les genoux, ou avant-bras surélevés sur le canapé."}
     ]},
   pull:{title:"Haut du corps — Tirer",emoji:"🔩",focus:"Dos · Biceps · Avant-bras",
     warm:"5 min : suspension 2×15 s, cercles de bras, band pull-apart ×15, 10 rowings à vide.",
     exos:[
-      {k:"deadhang",n:"Suspension active (dead hang)",sets:3,type:"hold",base:30,step:5,cap:90,musc:"avbras",rest:"90 s",next:"Cap atteint → suspensions lestées.",cue:"Suspends-toi bras tendus, épaules basses et actives (pas molles). Grip + épaules = la base de la traction."},
-      {k:"pull_neg",n:"Tractions négatives",sets:3,type:"reps",base:4,step:1,cap:8,rest:"2 min",next:"🎯 Prêt pour les tractions assistées → puis ta 1re traction stricte.",cue:"Monte-toi menton au-dessus de la barre (saut ou chaise), puis descends LENTEMENT en 4–5 s. Le meilleur exo pour aller chercher ta 1re traction."},
-      {k:"assist_pull",n:"Tractions assistées élastique",sets:3,type:"reps",base:6,step:1,cap:12,musc:"dos",rest:"2 min",next:"Cap atteint → réduis l'élastique / passe à la traction stricte.",cue:"Élastique sur la barre, un pied dedans. En supination (paumes vers toi) = dos + biceps. Réduis l'assistance semaine après semaine."},
-      {k:"rowing_aus",n:"Rowing australien (tirage horizontal)",sets:3,type:"reps",base:10,step:1,cap:20,musc:"traps",rest:"90 s",next:"Cap atteint → descends la barre (corps plus horizontal).",cue:"Barre calée bas (ou sous une table solide), corps gainé en planche, tire la poitrine vers la barre en serrant les omoplates."},
-      {k:"curl",n:"Curl biceps (haltères 3/5 kg ou élastique)",sets:3,type:"reps",base:12,step:1,cap:20,musc:"biceps",rest:"60 s",next:"Cap atteint → prends les haltères 5 kg.",cue:"Coudes fixes, pas d'élan, contrôle la descente."},
-      {k:"facepull",n:"Face pull élastique",sets:3,type:"reps",base:15,step:1,cap:25,rest:"60 s",next:"Cap atteint → élastique plus dur.",cue:"Tire l'élastique vers le front, coudes hauts → épaules arrière + posture. Indispensable quand on fait beaucoup de pompes."}
+      {k:"deadhang",n:"Suspension active (dead hang)",sets:3,type:"hold",base:30,step:5,cap:90,musc:"avbras",rest:"90 s",next:"Cap atteint → suspensions lestées.",cue:"Suspends-toi bras tendus, épaules basses et actives (pas molles). Grip + épaules = la base de la traction.",how:"Attrape la barre en pronation (paumes vers l'avant), largeur d'épaules. Suspends-toi bras tendus mais épaules ACTIVES : tire légèrement les omoplates vers le bas (ne reste pas 'décroché', épaules aux oreilles). Tiens le plus longtemps possible en gardant le gainage.",easier:"Le grip lâche avant les épaules ? Coupe en 2–3 suspensions plus courtes, ou utilise de la magnésie."},
+      {k:"pull_neg",n:"Tractions négatives (descente 4-5 s)",sets:3,type:"reps",base:4,step:1,cap:8,rest:"2 min",next:"🎯 Prêt pour les tractions assistées → puis ta 1re traction stricte.",cue:"Monte-toi menton au-dessus de la barre (saut ou chaise), puis descends LENTEMENT en 4–5 s. Le meilleur exo pour ta 1re traction.",how:"Monte-toi jusqu'à avoir le menton au-dessus de la barre (avec un saut, ou en montant sur une chaise). De là, retire l'aide et DESCENDS le plus lentement possible (4–5 s) en contrôlant, jusqu'à bras tendus. Remonte en trichant, et recommence la descente.",easier:"Tu 'tombes' vite au début, c'est normal. Vise juste à ralentir un peu plus la descente à chaque séance."},
+      {k:"assist_pull",n:"Tractions assistées élastique",sets:3,type:"reps",base:6,step:1,cap:12,musc:"dos",rest:"2 min",next:"Cap atteint → réduis l'élastique / passe à la traction stricte.",cue:"Élastique sur la barre, un pied dedans. En supination (paumes vers toi) = dos + biceps.",how:"Passe un élastique sur la barre et mets un pied ou un genou dedans (il te 'pousse' vers le haut). En supination (paumes vers toi), tire jusqu'à passer le menton au-dessus de la barre, puis descends contrôlé. Serre les omoplates, ne te balance pas.",easier:"Plus l'élastique est épais, plus il aide : prends le 35 kg pour démarrer, puis descends en résistance au fil des semaines."},
+      {k:"rowing_aus",n:"Rowing australien (tirage horizontal)",sets:3,type:"reps",base:10,step:1,cap:20,musc:"traps",rest:"90 s",next:"Cap atteint → descends la barre (corps plus horizontal).",cue:"Corps gainé, tire la poitrine vers la barre en serrant les omoplates.",how:"Barre calée à hauteur de hanches (ou sous une table solide). Passe dessous, attrape la barre bras tendus, corps gainé en ligne droite (talons au sol). Tire ta poitrine vers la barre en serrant les omoplates, puis redescends contrôlé. Plus ton corps est horizontal, plus c'est dur.",easier:"Trop dur ? Plie les genoux, pieds à plat au sol, OU relève la barre — corps plus vertical = plus facile."},
+      {k:"curl",n:"Curl biceps (haltères 3/5 kg ou élastique)",sets:3,type:"reps",base:12,step:1,cap:20,musc:"biceps",rest:"60 s",next:"Cap atteint → prends les haltères 5 kg.",cue:"Coudes fixes, pas d'élan, contrôle la descente.",how:"Haltères le long du corps, paumes vers l'avant. Fléchis les coudes pour monter les haltères vers les épaules SANS bouger les coudes ni balancer le buste. Serre en haut, puis contrôle la descente sur 2 s.",easier:"Trop léger avec 3 kg ? Passe aux 5 kg, ou ralentis la descente à 3 s pour plus d'intensité."},
+      {k:"facepull",n:"Face pull élastique",sets:3,type:"reps",base:15,step:1,cap:25,rest:"60 s",next:"Cap atteint → élastique plus dur.",cue:"Tire l'élastique vers le front, coudes hauts → épaules arrière + posture.",how:"Fixe l'élastique à hauteur de visage (poignée de porte, barre). Tire les deux extrémités vers ton front en écartant les mains, coudes hauts, en serrant les omoplates. Travaille l'arrière des épaules et la posture — essentiel quand on fait beaucoup de pompes.",easier:"Recule pour plus de tension, avance pour moins. Garde le mouvement lent et propre."}
     ]},
   legs:{title:"Bas du corps",emoji:"🦵",focus:"Quadris · Fessiers · Ischios · Mollets",
     warm:"5 min : 30 squats à vide lents, 10 fentes marchées, cercles de hanches.",
     exos:[
-      {k:"squats",n:"Squats",sets:4,type:"reps",base:20,step:2,cap:35,musc:"quads",rest:"90 s",next:"Cap atteint → goblet squat lesté (haltère/disque).",cue:"Cuisses parallèles au sol, poids sur les talons, dos droit."},
-      {k:"fentes",n:"Fentes marchées",sets:3,type:"reps",base:10,step:1,cap:20,perLeg:true,rest:"90 s",next:"Cap atteint → charge avec les haltères.",cue:"Grand pas, genou arrière vers le sol, buste droit."},
-      {k:"bulgare",n:"Squat bulgare (pied arrière sur la barre à dips)",sets:3,type:"reps",base:8,step:1,cap:15,perLeg:true,rest:"90 s",next:"Cap atteint → ajoute du poids (haltères/disque).",cue:"Pied arrière surélevé, tu descends sur la jambe avant → gros travail quadris + fessiers."},
-      {k:"hipthrust",n:"Hip thrust / pont fessier",sets:3,type:"reps",base:15,step:2,cap:30,musc:"fessiers",rest:"90 s",next:"Cap atteint → augmente la charge sur le bassin.",cue:"Épaules calées (banc ou sol), disque de 20 kg sur le bassin, monte les hanches et serre fort les fessiers 1 s en haut."},
-      {k:"goodmorning",n:"Ischios : good morning élastique (ou pont sur 1 jambe)",sets:3,type:"reps",base:10,step:1,cap:20,musc:"ischios",rest:"90 s",next:"Cap atteint → élastique plus dur / pont 1 jambe lesté.",cue:"Charnière de hanche, dos plat, tu sens l'arrière des cuisses tirer."},
-      {k:"mollets",n:"Mollets debout (sur une marche, disque en main)",sets:4,type:"reps",base:20,step:2,cap:40,musc:"mollets",rest:"45 s",next:"Cap atteint → fais-les sur une jambe.",cue:"Amplitude complète : monte haut sur la pointe, descends bien le talon sous la marche."}
+      {k:"squats",n:"Squats",sets:4,type:"reps",base:20,step:2,cap:35,musc:"quads",rest:"90 s",next:"Cap atteint → goblet squat lesté (haltère/disque).",cue:"Cuisses parallèles au sol, poids sur les talons, dos droit.",how:"Pieds largeur d'épaules, pointes légèrement vers l'extérieur. Descends en poussant les fesses vers l'arrière (comme pour t'asseoir), genoux dans l'axe des pieds, jusqu'à cuisses parallèles au sol. Talons ancrés, dos droit, poitrine haute. Remonte en poussant dans les talons.",easier:"Équilibre ou profondeur difficile ? Squats sur une chaise : touche l'assise et remonte."},
+      {k:"fentes",n:"Fentes marchées",sets:3,type:"reps",base:10,step:1,cap:20,perLeg:true,rest:"90 s",next:"Cap atteint → charge avec les haltères.",cue:"Grand pas, genou arrière vers le sol, buste droit.",how:"Debout, fais un grand pas en avant et descends jusqu'à ce que le genou arrière frôle le sol. Le genou avant reste au-dessus de la cheville (pas devant les orteils). Pousse pour revenir et alterne les jambes (ou avance à chaque pas).",easier:"Équilibre difficile ? Tiens-toi à un mur, ou réduis l'amplitude au début."},
+      {k:"bulgare",n:"Squat bulgare (pied arrière sur la barre à dips)",sets:3,type:"reps",base:8,step:1,cap:15,perLeg:true,rest:"90 s",next:"Cap atteint → ajoute du poids (haltères/disque).",cue:"Pied arrière surélevé, tu descends sur la jambe avant → quadris + fessiers.",how:"Pied arrière posé sur la barre à dips (ou une chaise), l'autre pied bien devant. Descends verticalement sur la jambe avant jusqu'à cuisse parallèle, buste droit, puis remonte. Presque toute la charge est sur la jambe avant.",easier:"Trop dur / instable ? Fais des fentes classiques d'abord, ou baisse la hauteur du support arrière."},
+      {k:"hipthrust",n:"Hip thrust / pont fessier",sets:3,type:"reps",base:15,step:2,cap:30,musc:"fessiers",rest:"90 s",next:"Cap atteint → augmente la charge sur le bassin.",cue:"Monte les hanches et serre fort les fessiers 1 s en haut.",how:"Haut du dos calé contre un banc/canapé (ou allongé au sol pour un pont), pieds à plat largeur de hanches. Pose un disque sur le bassin. Monte les hanches en serrant fort les fessiers jusqu'à aligner épaules-hanches-genoux, pause 1 s en haut, puis redescends contrôlé.",easier:"Commence sans charge, au sol (pont fessier). Ajoute le disque quand le mouvement est maîtrisé."},
+      {k:"goodmorning",n:"Ischios : good morning élastique (ou pont sur 1 jambe)",sets:3,type:"reps",base:10,step:1,cap:20,musc:"ischios",rest:"90 s",next:"Cap atteint → élastique plus dur / pont 1 jambe lesté.",cue:"Charnière de hanche, dos plat, tu sens l'arrière des cuisses tirer.",how:"Élastique sous les pieds et passé sur la nuque/les épaules. Genoux légèrement fléchis, penche le buste vers l'avant en poussant les fesses en arrière (charnière de hanche), dos bien PLAT, jusqu'à sentir l'arrière des cuisses tirer, puis reviens. Ce n'est PAS un squat : le mouvement vient des hanches, pas des genoux.",easier:"Ou fais un pont fessier sur une seule jambe pour cibler les ischios."},
+      {k:"mollets",n:"Mollets debout (sur une marche, disque en main)",sets:4,type:"reps",base:20,step:2,cap:40,musc:"mollets",rest:"45 s",next:"Cap atteint → fais-les sur une jambe.",cue:"Amplitude complète : monte haut sur la pointe, descends bien le talon sous la marche.",how:"Debout sur le bord d'une marche, talons dans le vide, un disque/haltère en main. Monte le plus haut possible sur la pointe des pieds, pause 1 s en haut, puis descends lentement les talons SOUS le niveau de la marche pour un grand étirement. Cherche l'amplitude maximale.",easier:"Sans charge d'abord, ou sur les deux jambes avant de passer à une seule."},
+      {k:"tibialis",n:"Tibialis (orteils vers le tibia) — anti-périostite",sets:3,type:"reps",base:15,step:2,cap:30,rest:"45 s",next:"Cap atteint → leste (élastique / petit haltère sur le pied).",cue:"Prévention n°1 de tes douleurs de tibia : renforce l'avant de la jambe. À faire aussi les jours de course.",how:"Debout dos contre un mur, talons à ~20 cm du mur. Garde les talons au sol et lève l'avant des pieds (orteils) le plus haut possible vers les tibias, puis redescends lentement. Tu dois sentir chauffer le muscle à l'avant du tibia. C'est LE muscle qui te manque quand tes tibias tirent en courant.",easier:"Assis, même mouvement de flexion de cheville si debout tire trop vite."}
     ]},
   full:{title:"Poids du corps complet — circuit",emoji:"⚡",focus:"Corps entier + cardio",circuit:true,
     warm:"5 min : mobilité générale + 10 pompes + 10 squats.",
@@ -2373,30 +2421,56 @@ const PROG_SESSIONS={
     ]}
 };
 
+/* --- Minuteur de repos (par exo) --- */
+let progTimerInt=null;
+function progBeep(){try{const c=new(window.AudioContext||window.webkitAudioContext)();const o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.value=880;g.gain.value=.25;o.start();o.stop(c.currentTime+.5);}catch(e){}}
+function progRestSec(r){if(!r)return 90;return r.indexOf("min")>=0?parseInt(r)*60:parseInt(r);}
+function progStartTimer(sec){
+  clearInterval(progTimerInt);const el=$("progTimer");if(!el)return;
+  el.classList.remove("hidden","fini");$("progTimerLbl").textContent="Repos";
+  let left=sec;$("progTimerVal").textContent=left+" s";
+  progTimerInt=setInterval(()=>{left--;
+    if(left<=0){clearInterval(progTimerInt);$("progTimerVal").textContent="GO ! 💪";el.classList.add("fini");progBeep();try{if(navigator.vibrate)navigator.vibrate([200,100,200]);}catch(e){}setTimeout(()=>el.classList.add("hidden"),3500);}
+    else $("progTimerVal").textContent=left+" s";
+  },1000);
+}
+function progStopTimer(){clearInterval(progTimerInt);const el=$("progTimer");if(el)el.classList.add("hidden");}
+
+/* --- Reps par série (état du jour) → meilleure série auto --- */
+const K_PROGSETS="hub_prog_sets_v1";
+function progGetSets(){return LS.get(K_PROGSETS,{})||{};}
+function progBestOf(arr){let m=null;(arr||[]).forEach(v=>{if(v!=null&&v!==""&&(m==null||+v>m))m=+v;});return m;}
+function progSaveSet(key,i,val){
+  const iso=todayISO(),all=progGetSets();const d=all[iso]=all[iso]||{};const arr=d[key]=d[key]||[];
+  arr[i]=(val===""||val==null)?null:Math.max(0,parseInt(val)||0);LS.set(K_PROGSETS,all);
+  const best=progBestOf(arr);const el=document.getElementById("pbest_"+key);if(el)el.textContent=best!=null?best:"—";
+}
+function progExoDef(key){let def=null;Object.values(PROG_SESSIONS).forEach(S=>(S.exos||[]).forEach(e=>{if(e.k===key)def=e;}));return def;}
+function progInfo(key){const el=document.getElementById("info_"+key);if(el)el.classList.toggle("hidden");}
+
 /* --- Auto-régulation calisthénie : les résultats ajustent les cibles --- */
 const K_PROGPERF="hub_prog_perf_v1";
 function progGetPerf(){return LS.get(K_PROGPERF,{})||{};}
 function progSetPerf(o){LS.set(K_PROGPERF,o);}
 function progExoUnit(e){return e.type==="hold"?" s":(e.perLeg?" / jambe":" reps");}
 function progExoTarget(e){const p=progGetPerf()[e.k];return p&&p.target!=null?p.target:e.base;}
-function progLogExo(key){
-  const el=document.getElementById("plog_"+key);if(!el)return;
-  const val=parseInt(el.value);if(!(val>=0)){flash("Entre ta perf 😉");return;}
-  // retrouver la définition de l'exo
-  let def=null;Object.values(PROG_SESSIONS).forEach(S=>(S.exos||[]).forEach(e=>{if(e.k===key)def=e;}));
-  if(!def)return;
+function progValidExo(key){
+  const def=progExoDef(key);if(!def)return;
+  const iso=todayISO();const arr=(progGetSets()[iso]||{})[key]||[];
+  const val=progBestOf(arr);
+  if(val==null){flash("Note au moins une série 😉");return;}
   const P=progGetPerf();const cur=(P[key]&&P[key].target!=null)?P[key].target:def.base;
   let nt=cur,arrow="→";
   if(val>=cur){nt=Math.min(def.cap,cur+def.step);arrow=nt>cur?"↗︎":"🏆";}      // objectif atteint → on monte
   else if(val>=cur-def.step){nt=cur;arrow="→";}                                  // proche → on maintient
   else{nt=Math.max(def.base,val);arrow="↘︎";}                                    // en dessous → on recale
-  P[key]={target:nt,last:val,prev:cur,arrow,updated:todayISO()};progSetPerf(P);
-  // synchro rang muscle si l'exo correspond à un repère de muscle
+  P[key]={target:nt,last:val,prev:cur,arrow,updated:iso};progSetPerf(P);
+  // synchro rang muscle si l'exo correspond à un repère de muscle (utilise la meilleure série)
   if(def.musc){const m=MUSCLES.find(x=>x.id===def.musc);if(m&&val>(+muscRec[m.id]||0)){const before=muscTier(m);muscRec[m.id]=val;saveMusc();const after=muscTier(m);if(typeof renderBody==="function")renderBody();if(after>before)flash("💪 "+m.name+" → rang "+MTIERS[after].g+" !");}}
   renderProgram();
-  if(nt>cur)flash("↗︎ Progression ! Objectif "+key+" : "+nt+(def.type==="hold"?" s":" reps"));
-  else if(nt<cur)flash("Objectif recalé sur ta perf du jour 👍");
-  else flash("Perf notée ✓");
+  if(nt>cur)flash("↗︎ Progression ! Meilleure "+val+" → objectif "+nt+(def.type==="hold"?" s":" reps"));
+  else if(nt<cur)flash("Objectif recalé sur ta perf 👍 (meilleure "+val+")");
+  else flash("Séance notée ✓ · meilleure : "+val+(def.type==="hold"?" s":" reps"));
 }
 
 function progRunSession(key,ph){
@@ -2475,9 +2549,10 @@ function progRenderSession(iso,forceInputs){
   if(key.startsWith("run")){
     const R=progRunSession(key,ph);headEmoji=R.emoji;headTitle=R.title;focus=R.focus;
     body=`<ul style="list-style:none;padding:0;margin:10px 0 0;">`+R.lines.map(l=>`<li style="padding:8px 0;border-bottom:1px solid var(--border);line-height:1.6;">${esc(l)}</li>`).join("")+`</ul>`;
+    body+=`<div style="margin-top:10px;padding:9px 11px;border-radius:10px;background:#ef444414;border:1px solid #ef444440;font-size:12px;line-height:1.55;">🦵 <b>Tibias sensibles</b> (tu l'avais noté) : privilégie le souple (terre, piste), petites foulées / cadence élevée (~180), et <b>stop si douleur VIVE</b> (une gêne sourde passe, une douleur aiguë = on arrête). Fais tes tibialis + mollets à côté.</div>`;
     if(R.noVMA)body+=`<p class="note" style="margin-top:10px;font-size:12px;color:#eab308;">💡 Allures au ressenti (RPE) pour l'instant. Note ta <b>distance</b> sur une sortie ci-dessous → je calcule tes allures automatiquement. (Encore plus précis : le <b>test VMA</b> dans Coach Fitness plus bas.)</p>`;
     if(showInputs)body+=`
-      <div style="margin-top:12px;font-size:11.5px;color:var(--muted2);">Comment c'était ? J'ajuste ta prochaine sortie ${R.type==="int"?"(nombre d'intervalles)":"(durée)"}.</div>
+      <div style="margin-top:12px;font-size:11.5px;color:var(--muted2);">Comment c'était ? (ça <b>enregistre ta sortie</b> dans l'historique et ajuste ${R.type==="int"?"le nb d'intervalles":"la durée"} de la prochaine)</div>
       <div style="display:flex;gap:6px;margin-top:6px;">
         <button class="btn small ghost" style="flex:1;margin:0;padding:8px 4px;" onclick="progRunFeedback('${R.type}','hard')">😓 Trop dur</button>
         <button class="btn small ghost" style="flex:1;margin:0;padding:8px 4px;" onclick="progRunFeedback('${R.type}','ok')">👍 Parfait</button>
@@ -2491,7 +2566,7 @@ function progRenderSession(iso,forceInputs){
     headEmoji=S.emoji;headTitle=S.title;focus=S.focus;
     body=`<p class="note" style="margin:8px 0 4px;font-size:12px;">🔥 Échauffement — ${esc(S.warm)}</p>`;
     if(S.note)body+=`<p class="sub" style="margin:6px 0;">${esc(S.note)}</p>`;
-    const perf=progGetPerf();
+    const perf=progGetPerf();const setState=progGetSets()[todayISO()]||{};
     body+=`<div style="margin-top:8px;">`+S.exos.map((e,i)=>{
       if(!e.k){ // exo de circuit (non tracké)
         return `<div style="padding:9px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;gap:10px;align-items:baseline;">
@@ -2502,18 +2577,39 @@ function progRenderSession(iso,forceInputs){
       const tl=e.type==="hold"?`${e.sets} × ${t} s`:`${e.sets} × ${t}${e.perLeg?" /j":""}`;
       const capReached=t>=e.cap;
       const lastLine=P&&P.last!=null
-        ? `📈 Dernière fois : ${P.last}${e.type==="hold"?" s":""} · ${P.arrow==="↗︎"?"objectif monté à "+t:(P.arrow==="↘︎"?"objectif recalé à "+t:"objectif maintenu à "+t)}`
-        : `Note ta meilleure série → j'ajuste l'objectif la prochaine fois.`;
-      return `<div style="padding:11px 0;border-bottom:1px solid var(--border);">
+        ? `📈 Dernière fois : meilleure ${P.last}${e.type==="hold"?" s":""} · ${P.arrow==="↗︎"?"objectif monté à "+t:(P.arrow==="↘︎"?"objectif recalé à "+t:"objectif maintenu à "+t)}`
+        : `Note tes reps série par série → je prends ta meilleure et j'ajuste l'objectif.`;
+      const info=`<div id="info_${e.k}" class="progInfo hidden">
+        <b>👉 Comment faire</b><div style="margin:3px 0 8px;white-space:pre-line;">${esc(e.how||e.cue||"")}</div>
+        ${e.easier?`<b>🪜 Plus facile</b><div style="margin-top:3px;">${esc(e.easier)}</div>`:""}</div>`;
+      // une case de saisie PAR série → meilleure calculée auto
+      const arr=setState[e.k]||[];const bestNow=progBestOf(arr);
+      const unit=e.type==="hold"?"sec":(e.perLeg?"reps/j":"reps");
+      let inputs="";
+      for(let s=0;s<e.sets;s++){const v=(arr[s]!=null&&arr[s]!=="")?arr[s]:"";
+        inputs+=`<div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
+          <span style="font-size:9px;color:var(--muted2);font-weight:700;">S${s+1}</span>
+          <input id="pset_${e.k}_${s}" type="number" inputmode="numeric" min="0" value="${v}" oninput="progSaveSet('${e.k}',${s},this.value)" style="width:46px;text-align:center;background:var(--card2);border:1px solid var(--border);border-radius:8px;color:var(--txt);padding:7px 2px;font-size:15px;font-weight:800;"></div>`;}
+      return `<div style="padding:12px 0;border-bottom:1px solid var(--border);">
         <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline;">
           <b style="font-size:14px;">${i+1}. ${esc(e.n)}</b>
           <span class="gold-t" style="white-space:nowrap;font-weight:800;">${tl}</span></div>
         ${e.cue?`<div style="font-size:12.5px;color:var(--muted);line-height:1.55;margin-top:4px;">${esc(e.cue)}</div>`:""}
         ${capReached&&e.next?`<div style="font-size:11.5px;color:#22c55e;line-height:1.5;margin-top:4px;">${esc(e.next)}</div>`:""}
-        <div style="font-size:11px;color:var(--muted2);margin-top:5px;">${lastLine}${e.rest?" · Repos "+esc(e.rest):""}</div>
-        ${showInputs?`<div style="display:flex;gap:6px;margin-top:6px;align-items:center;">
-          <input id="plog_${e.k}" type="number" inputmode="numeric" min="0" placeholder="ta meilleure série (${e.type==="hold"?"sec":"reps"})" style="flex:1;background:var(--card2);border:1px solid var(--border);border-radius:8px;color:var(--txt);padding:7px 10px;font-size:13px;">
-          <button class="btn small gold" style="flex:0 0 auto;padding:7px 14px;margin:0;" onclick="progLogExo('${e.k}')">Valider</button></div>`:""}
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:8px;">
+          <button class="progMini" onclick="progInfo('${e.k}')">ℹ️ Comment faire</button>
+          <button class="progMini" onclick="progStartTimer(${progRestSec(e.rest)})">⏱️ Repos ${esc(e.rest||"90 s")}</button>
+        </div>
+        ${info}
+        <div style="font-size:11px;color:var(--muted2);margin-top:6px;">${lastLine}</div>
+        ${showInputs?`
+          <div style="font-size:11px;color:var(--muted2);margin-top:8px;">Tes reps par série (${unit}) :</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:5px;align-items:flex-end;">${inputs}
+            <div style="display:flex;flex-direction:column;align-items:center;gap:3px;margin-left:2px;">
+              <span style="font-size:9px;color:var(--gold-l);font-weight:700;">🏆 MAX</span>
+              <span id="pbest_${e.k}" style="min-width:42px;text-align:center;font-size:16px;font-weight:900;color:var(--gold-l);padding:6px 4px;">${bestNow!=null?bestNow:"—"}</span></div>
+          </div>
+          <button class="btn small gold" style="margin-top:9px;padding:8px 16px;" onclick="progValidExo('${e.k}')">✅ Valider (ajuste l'objectif)</button>`:""}
       </div>`;
     }).join("")+`</div>`;
   }
@@ -2607,7 +2703,49 @@ function renderProgram(){
         <span class="pill" style="background:#C6A15B22;color:var(--gold-l);border:1px solid #C6A15B55;">${ph.freq} j/7</span></div>
       <p class="sub" style="margin-top:8px;line-height:1.6;">${esc(ph.intro)}</p></div>`;
   }
-  host.innerHTML=banner+progRenderSession(iso)+progRenderWeek(iso)+progRenderTimeline(iso);
+  host.innerHTML=banner+progRenderSession(iso)+progRenderWeek(iso)+progRenderHistory()+progRenderTimeline(iso);
+}
+
+/* --- Historique : revoir ses résultats séance par séance --- */
+let progHistOpen=false;
+function progHistToggle(){progHistOpen=!progHistOpen;const el=$("progHistBody");if(el)el.style.display=progHistOpen?"block":"none";const btn=$("progHistBtn");if(btn)btn.textContent=progHistOpen?"Masquer":"Voir";}
+const PROG_RUNLBL={ef:"🏃 Endurance",int:"⚡ Fractionné",long:"🌄 Sortie longue"};
+const PROG_VERDICT={hard:"😓 dur",ok:"👍 ok",easy:"😎 facile"};
+function progRenderHistory(){
+  const sets=progGetSets();const runlog=progGetRunLog();
+  const dset=new Set([...Object.keys(sets),...Object.keys(runlog)]);
+  const dates=[...dset].filter(d=>{
+    const day=sets[d]||{};const hasCali=Object.keys(day).some(k=>progBestOf(day[k])!=null);
+    return hasCali||runlog[d];
+  }).sort(); // ancien → récent
+  if(!dates.length)return`<div class="card"><div class="section-title" style="margin-top:0;">📖 Historique de mes séances</div><p class="sub">Tes résultats (calisthénie ET course) s'enregistreront ici jour par jour, dès ta 1re séance. Tu pourras revenir voir n'importe quelle semaine.</p></div>`;
+  const rows=dates.map(d=>{
+    const day=sets[d]||{};
+    let items=Object.keys(day).map(k=>{
+      const a=day[k]||[];const best=progBestOf(a);if(best==null)return"";
+      const def=progExoDef(k);const nm=def?def.n:k;const u=def&&def.type==="hold"?" s":"";
+      const seq=a.map(v=>(v==null||v==="")?"–":v).join(" · ");
+      return`<div style="font-size:12px;margin:3px 0;line-height:1.4;"><span style="color:var(--muted);">${esc(nm)}</span> — ${esc(seq)} <span class="gold-t" style="font-weight:800;">(max ${best}${u})</span></div>`;
+    }).filter(Boolean);
+    const rl=runlog[d];
+    if(rl){
+      const parts=[];
+      if(rl.dur)parts.push(rl.dur+" min");
+      if(rl.reps)parts.push(rl.reps+" intervalles");
+      if(rl.km)parts.push((""+rl.km).replace(".",",")+" km");
+      if(rl.verdict&&PROG_VERDICT[rl.verdict])parts.push("ressenti "+PROG_VERDICT[rl.verdict]);
+      items.push(`<div style="font-size:12px;margin:3px 0;line-height:1.4;"><span style="color:var(--muted);">${PROG_RUNLBL[rl.type]||"🏃 Course"}</span> — ${esc(parts.join(" · ")||"séance faite")}</div>`);
+    }
+    if(!items.length)return"";
+    const dd=new Date(d+"T12:00:00").toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"});
+    return`<div style="padding:10px 0;border-bottom:1px solid var(--border);"><div style="font-weight:800;font-size:12.5px;margin-bottom:4px;text-transform:capitalize;color:var(--gold-l);">${dd}</div>${items.join("")}</div>`;
+  }).filter(Boolean).join("");
+  return`<div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+      <div class="section-title" style="margin:0;">📖 Historique de mes séances</div>
+      <button class="progMini" id="progHistBtn" onclick="progHistToggle()">${progHistOpen?"Masquer":"Voir"}</button></div>
+    <p class="sub" style="margin:4px 0 0;">${dates.length} séance${dates.length>1?"s":""} loguée${dates.length>1?"s":""} · retrouve n'importe quelle semaine.</p>
+    <div id="progHistBody" style="display:${progHistOpen?"block":"none"};margin-top:8px;">${rows}</div></div>`;
 }
 
 /* ---- Progression : historique XP quotidien, série 🔥, courbe ---- */
