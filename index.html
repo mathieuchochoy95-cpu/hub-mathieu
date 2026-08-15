@@ -737,6 +737,15 @@
         <button class="btn small gold" id="stepSave" style="flex:0 0 auto;">Valider</button>
         <button class="btn small ghost" id="stepPaste" style="flex:0 0 auto;">📋 Coller</button>
       </div>
+      <details style="margin-top:10px;">
+        <summary style="cursor:pointer;font-size:12.5px;color:var(--gold-l);font-weight:700;list-style:none;">🗓️ Ajouter les pas d'un jour passé (oubli)</summary>
+        <div class="row" style="align-items:flex-end;margin-top:8px;">
+          <div style="flex:1;min-width:120px;"><label>Date</label><input type="date" id="stepPastDate"></div>
+          <div style="flex:1;min-width:100px;"><label>Pas ce jour-là</label><input type="number" id="stepPastVal" min="0" max="120000" placeholder="ex : 9500" inputmode="numeric"></div>
+          <button class="btn small gold" id="stepPastSave" style="flex:0 0 auto;">Ajouter</button>
+        </div>
+        <p class="note" style="font-size:11px;margin-top:6px;">Choisis n'importe quel jour passé → l'XP et les paliers de pas se recalculent tout seuls.</p>
+      </details>
       <div style="font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--gold-l);font-weight:800;margin:16px 2px 4px;">🗓️ 3 derniers jours</div>
       <div id="stepDays"></div>
       <div id="stepMiles" class="auto-miles" style="margin-top:14px;"></div>
@@ -3110,6 +3119,19 @@ $("stepSave").addEventListener("click",()=>{
   syncRangs();
 });
 $("stepInput").addEventListener("keydown",e=>{if(e.key==="Enter")$("stepSave").click();});
+// Pas d'un jour passé (oubli)
+(function(){const el=$("stepPastDate");if(el){el.max=todayISO();el.value=isoAdd(todayISO(),-1);}})();
+$("stepPastSave").addEventListener("click",()=>{
+  const d=$("stepPastDate").value;const v=$("stepPastVal").value.trim();
+  if(!d){flash("Choisis une date 😉");return;}
+  if(d>todayISO()){flash("Date dans le futur 🙃");return;}
+  if(v===""){flash("Entre le nombre de pas 😉");return;}
+  setStepsForDay(d,v,"set");
+  $("stepPastVal").value="";
+  syncRangs();
+  flash("🚶 "+(+v).toLocaleString("fr-FR")+" pas ajoutés le "+new Date(d+"T12:00:00").toLocaleDateString("fr-FR",{day:"numeric",month:"long"}));
+});
+$("stepPastVal").addEventListener("keydown",e=>{if(e.key==="Enter")$("stepPastSave").click();});
 $("stepPaste").addEventListener("click",async()=>{
   try{
     const txt=await navigator.clipboard.readText();
