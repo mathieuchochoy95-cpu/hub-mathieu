@@ -2327,6 +2327,9 @@ const RUN_DEFS={
 const K_PROGPACE="hub_prog_pace_v1";
 function progGetPace(key){const all=LS.get(K_PROGPACE,null)||{};const d=RUN_DEFS[key];return all[key]||{lo:d.lo,hi:d.hi,succ:0};}
 function progSetPace(key,o){const all=LS.get(K_PROGPACE,null)||{};all[key]=o;LS.set(K_PROGPACE,all);}
+function progResetPace(key){const all=LS.get(K_PROGPACE,null)||{};delete all[key];LS.set(K_PROGPACE,all);renderProgram();flash("Allure cible remise à "+progFmtPace(RUN_DEFS[key].lo)+"–"+progFmtPace(RUN_DEFS[key].hi)+"/km");}
+// Correctif unique : remet l'allure du mardi à 6:40–6:50.
+(function(){try{if(!LS.get("hub_pace_fix_mar",false)){const all=LS.get(K_PROGPACE,null)||{};delete all.run_mar;LS.set(K_PROGPACE,all);LS.set("hub_pace_fix_mar",true);}}catch(e){}})();
 function progFmtPace(sec){const m=Math.floor(sec/60),s=sec%60;return m+":"+String(s).padStart(2,"0");}
 function progFmtDur(sec){if(sec==null||isNaN(sec))return"";const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60;return h>0?(h+":"+String(m).padStart(2,"0")+":"+String(s).padStart(2,"0")):(m+":"+String(s).padStart(2,"0"));}
 function progSplitDur(sec){if(sec==null||isNaN(sec))return{h:"",m:"",s:""};return{h:Math.floor(sec/3600)||"",m:Math.floor((sec%3600)/60),s:sec%60};}
@@ -2485,7 +2488,8 @@ function progRenderSession(iso){
     let body=`<ul style="list-style:none;padding:0;margin:10px 0 0;">
       <li style="padding:8px 0;border-bottom:1px solid var(--border);line-height:1.6;"><b>Distance :</b> ${d.dist} km</li>
       <li style="padding:8px 0;border-bottom:1px solid var(--border);line-height:1.6;"><b>Allure cible :</b> ${progFmtPace(pc.lo)} – ${progFmtPace(pc.hi)} /km${pc.succ?` <span style="color:#22c55e;">· ${pc.succ}/2 réussite pour accélérer</span>`:""}</li>
-    </ul>`;
+    </ul>
+    <div style="text-align:right;margin-top:4px;"><button class="progMini" style="font-size:11px;padding:4px 9px;" onclick="progResetPace('${key}')">↺ Remettre l'allure de départ</button></div>`;
     body+=`<div style="margin-top:10px;padding:9px 11px;border-radius:10px;background:#ef444414;border:1px solid #ef444440;font-size:12px;line-height:1.55;">🦵 <b>Tibias sensibles</b> : privilégie le souple (terre, piste), petites foulées / cadence ~180, et stop si douleur vive.</div>`;
     if(isToday){
       const hms=progSplitDur(pv?pv.durSec:null);
@@ -2572,9 +2576,15 @@ function progRenderSession(iso){
 
 function progDoneBtn(iso,done,isToday){
   if(!isToday)return"";
-  if(done)return`<div style="margin-top:14px;text-align:center;padding:10px;border-radius:10px;background:#22c55e18;color:#22c55e;font-weight:700;">✅ Séance validée aujourd'hui — bien joué 💪</div>`;
+  if(done)return`<div style="margin-top:14px;text-align:center;padding:10px;border-radius:10px;background:#22c55e18;color:#22c55e;font-weight:700;">✅ Séance validée aujourd'hui — bien joué 💪</div>
+    <div style="text-align:center;margin-top:6px;"><button class="progMini" style="font-size:11px;padding:4px 10px;" onclick="progUndoDone('${iso}')">↺ Annuler la validation</button></div>`;
   return`<button class="btn gold" style="margin-top:14px;" onclick="progMarkDone('${iso}')">✅ Séance faite (+25 XP)</button>
     <p class="note" style="margin-top:6px;font-size:11px;">Valide chaque exo ci-dessus pour faire monter tes objectifs, puis marque la séance faite.</p>`;
+}
+function progUndoDone(iso){
+  const d=progGetDone();if(!d[iso])return;delete d[iso];progSetDone(d);
+  const k="prog_"+iso;if(RS.creditedKeys&&RS.creditedKeys[k]){delete RS.creditedKeys[k];RS.xp=Math.max(0,RS.xp-25);RS.autoXP=Math.max(0,(RS.autoXP||0)-25);saveRS();if(typeof renderRangs==="function")renderRangs();}
+  renderProgram();flash("Validation annulée — tu peux revalider");
 }
 function progCreditDone(iso){
   const d=progGetDone();if(d[iso])return;
