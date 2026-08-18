@@ -2329,6 +2329,7 @@ function progGetPace(key){const all=LS.get(K_PROGPACE,null)||{};const d=RUN_DEFS
 function progSetPace(key,o){const all=LS.get(K_PROGPACE,null)||{};all[key]=o;LS.set(K_PROGPACE,all);}
 function progFmtPace(sec){const m=Math.floor(sec/60),s=sec%60;return m+":"+String(s).padStart(2,"0");}
 function progFmtDur(sec){if(sec==null||isNaN(sec))return"";const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60;return h>0?(h+":"+String(m).padStart(2,"0")+":"+String(s).padStart(2,"0")):(m+":"+String(s).padStart(2,"0"));}
+function progSplitDur(sec){if(sec==null||isNaN(sec))return{h:"",m:"",s:""};return{h:Math.floor(sec/3600)||"",m:Math.floor((sec%3600)/60),s:sec%60};}
 function progParseDur(str){str=(str||"").trim();if(!str)return null;if(str.indexOf(":")>=0){const p=str.split(":").map(x=>parseInt(x)||0);if(p.length===3)return p[0]*3600+p[1]*60+p[2];if(p.length===2)return p[0]*60+p[1];return null;}const f=parseFloat(str.replace(",","."));return isNaN(f)?null:Math.round(f*60);}
 
 // Élastique utilisé (35/25/15/5 kg), par jour et par exo.
@@ -2341,7 +2342,8 @@ const K_PROGRUNLOG="hub_prog_runlog_v1";
 function progGetRunLog(){return LS.get(K_PROGRUNLOG,{})||{};}
 function progValidRun(key){
   const dist=parseFloat(($("prun_dist").value||"").replace(",","."));
-  const durSec=progParseDur($("prun_dur").value);
+  const h=parseInt($("prun_h").value)||0,m=parseInt($("prun_m").value)||0,sc=parseInt($("prun_s").value)||0;
+  const durSec=h*3600+m*60+sc;
   const deniv=($("prun_den").value.trim()===""?null:(parseInt($("prun_den").value)||0));
   const bpm=($("prun_bpm").value.trim()===""?null:(parseInt($("prun_bpm").value)||0));
   if(!(dist>0)){flash("Entre la distance 😉");return;}
@@ -2486,14 +2488,24 @@ function progRenderSession(iso){
     </ul>`;
     body+=`<div style="margin-top:10px;padding:9px 11px;border-radius:10px;background:#ef444414;border:1px solid #ef444440;font-size:12px;line-height:1.55;">🦵 <b>Tibias sensibles</b> : privilégie le souple (terre, piste), petites foulées / cadence ~180, et stop si douleur vive.</div>`;
     if(isToday){
+      const hms=progSplitDur(pv?pv.durSec:null);
+      const durCss="width:100%;text-align:center;background:var(--card2);border:1px solid var(--border);border-radius:8px;color:var(--txt);padding:8px 4px;font-size:16px;font-weight:800;";
       body+=`<div style="margin-top:12px;font-size:11.5px;color:var(--muted2);">Après ta sortie, renseigne tes chiffres — je note tout, et l'allure cible s'accélère (−10 s) après 2 réussites.</div>
-      <div class="row" style="margin-top:6px;">
+      <label style="display:block;margin-top:8px;">Durée</label>
+      <div style="display:flex;gap:6px;align-items:center;margin-top:2px;">
+        <div style="flex:1;text-align:center;"><input id="prun_h" type="number" min="0" inputmode="numeric" placeholder="h" value="${hms.h}" style="${durCss}"><div style="font-size:9px;color:var(--muted2);margin-top:2px;">heures</div></div>
+        <span style="font-weight:900;color:var(--muted2);">:</span>
+        <div style="flex:1;text-align:center;"><input id="prun_m" type="number" min="0" max="59" inputmode="numeric" placeholder="min" value="${hms.m}" style="${durCss}"><div style="font-size:9px;color:var(--muted2);margin-top:2px;">minutes</div></div>
+        <span style="font-weight:900;color:var(--muted2);">:</span>
+        <div style="flex:1;text-align:center;"><input id="prun_s" type="number" min="0" max="59" inputmode="numeric" placeholder="sec" value="${hms.s}" style="${durCss}"><div style="font-size:9px;color:var(--muted2);margin-top:2px;">secondes</div></div>
+      </div>
+      <div class="row" style="margin-top:8px;">
         <div><label>Distance (km)</label><input id="prun_dist" type="number" step="0.1" inputmode="decimal" value="${pv?pv.dist:d.dist}"></div>
-        <div><label>Durée (h:mm:ss)</label><input id="prun_dur" type="text" inputmode="numeric" placeholder="1:05:30" value="${pv?progFmtDur(pv.durSec):""}"></div>
+        <div><label>Dénivelé (m)</label><input id="prun_den" type="number" inputmode="numeric" placeholder="ex : 45" value="${pv&&pv.deniv!=null?pv.deniv:""}"></div>
       </div>
       <div class="row" style="margin-top:6px;">
-        <div><label>Dénivelé (m)</label><input id="prun_den" type="number" inputmode="numeric" placeholder="ex : 45" value="${pv&&pv.deniv!=null?pv.deniv:""}"></div>
         <div><label>FC moyenne (bpm)</label><input id="prun_bpm" type="number" inputmode="numeric" placeholder="ex : 148" value="${pv&&pv.bpm!=null?pv.bpm:""}"></div>
+        <div></div>
       </div>
       <button class="btn gold" style="margin-top:12px;" onclick="progValidRun('${key}')">✅ Valider ma sortie (+25 XP)</button>
       ${pv?`<div style="text-align:center;font-size:12px;color:#22c55e;margin-top:8px;">Enregistrée : ${progFmtPace(pv.paceSec)}/km${pv.deniv!=null?" · +"+pv.deniv+" m":""}${pv.bpm!=null?" · "+pv.bpm+" bpm":""}</div>`:""}`;
@@ -2634,14 +2646,19 @@ function progAddOpen(kind){
   } else if(kind==="course"){
     openSheet(`<button class="close-x" onclick="closeSheet()">✕</button>
       <h3>🏃 Ajouter une séance de course</h3>${dsel}
+      <label style="display:block;">Durée</label>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <input type="number" min="0" id="ax_h" inputmode="numeric" placeholder="h" style="flex:1;text-align:center;">
+        <span style="font-weight:900;color:var(--muted2);">:</span>
+        <input type="number" min="0" max="59" id="ax_m" inputmode="numeric" placeholder="min" style="flex:1;text-align:center;">
+        <span style="font-weight:900;color:var(--muted2);">:</span>
+        <input type="number" min="0" max="59" id="ax_s" inputmode="numeric" placeholder="sec" style="flex:1;text-align:center;">
+      </div>
       <div class="row">
         <div><label>Distance (km)</label><input type="number" step="0.1" id="ax_km" inputmode="decimal" placeholder="ex : 8"></div>
-        <div><label>Durée (h:mm:ss)</label><input type="text" id="ax_dur" inputmode="numeric" placeholder="0:52:30"></div>
-      </div>
-      <div class="row">
         <div><label>Dénivelé (m)</label><input type="number" id="ax_den" inputmode="numeric" placeholder="ex : 40"></div>
-        <div><label>FC moy (bpm)</label><input type="number" id="ax_bpm" inputmode="numeric" placeholder="ex : 150"></div>
       </div>
+      <label>FC moy (bpm)</label><input type="number" id="ax_bpm" inputmode="numeric" placeholder="ex : 150">
       <label>Note (optionnel)</label><input type="text" id="ax_note" placeholder="ex : sortie club, tibia ok…">
       <button class="btn" style="margin-top:12px;" onclick="progSaveCourse()">Enregistrer la séance</button>`);
   } else {
@@ -2669,7 +2686,8 @@ function progAddExoRow(){
 function progSaveCourse(){
   const date=$("ax_date").value||todayISO();
   const km=parseFloat(($("ax_km").value||"").replace(",","."))||null;
-  const durSec=progParseDur($("ax_dur").value);
+  const h=parseInt($("ax_h").value)||0,m=parseInt($("ax_m").value)||0,sc=parseInt($("ax_s").value)||0;
+  const durSec=(h*3600+m*60+sc)||null;
   const deniv=($("ax_den").value.trim()===""?null:(parseInt($("ax_den").value)||0));
   const bpm=($("ax_bpm").value.trim()===""?null:(parseInt($("ax_bpm").value)||0));
   const note=($("ax_note").value||"").trim();
