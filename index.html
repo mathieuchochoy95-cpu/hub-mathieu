@@ -2347,27 +2347,23 @@ function progGetDone(){return LS.get(K_PROGDONE,{})||{};}
 function progSetDone(o){LS.set(K_PROGDONE,o);}
 
 // Programme FIXE — semaine type, identique chaque semaine.
-const PROG_SCHED={lun:"swHaut",mar:"run_mar",mer:"swJambes",jeu:"run_jeu",ven:"swHaut",sam:"run_sam",dim:"rest"};
+const PROG_SCHED={lun:"forceHaut",mar:"volley",mer:"run_court",jeu:"forceBas",ven:"forceHautB",sam:"run_long",dim:"rest"};
 const PROG_WK=["dim","lun","mar","mer","jeu","ven","sam"];
 const PROG_WKLABEL={lun:"Lun",mar:"Mar",mer:"Mer",jeu:"Jeu",ven:"Ven",sam:"Sam",dim:"Dim"};
 function progWeekday(iso){return PROG_WK[new Date(iso+"T12:00:00").getDay()];}
 
-// Course : 3 sorties, chacune sa distance + sa fourchette d'allure (créneaux de 10 s).
+// Course = base marathon, en footing LENT. Cible = une durée (qui grandit), allure au ressenti.
 const RUN_DEFS={
-  run_mar:{dist:10,lo:400,hi:410,sub:"Séance"},        // 6:40–6:50
-  run_jeu:{dist:7.5,lo:380,hi:390,sub:"Séance tempo"},  // 6:20–6:30
-  run_sam:{dist:12,lo:420,hi:430,sub:"Sortie longue"}   // 7:00–7:10
+  run_court:{sub:"Footing lent",durMin:30,cap:60},
+  run_long:{sub:"Sortie longue (base marathon)",durMin:40,cap:100}
 };
-const K_PROGPACE="hub_prog_pace_v1";
-function progGetPace(key){const all=LS.get(K_PROGPACE,null)||{};const d=RUN_DEFS[key];return all[key]||{lo:d.lo,hi:d.hi,succ:0};}
-function progSetPace(key,o){const all=LS.get(K_PROGPACE,null)||{};all[key]=o;LS.set(K_PROGPACE,all);}
-function progResetPace(key){const all=LS.get(K_PROGPACE,null)||{};delete all[key];LS.set(K_PROGPACE,all);renderProgram();flash("Allure cible remise à "+progFmtPace(RUN_DEFS[key].lo)+"–"+progFmtPace(RUN_DEFS[key].hi)+"/km");}
-// Correctif unique : remet l'allure du mardi à 6:40–6:50.
-(function(){try{if(!LS.get("hub_pace_fix_mar",false)){const all=LS.get(K_PROGPACE,null)||{};delete all.run_mar;LS.set(K_PROGPACE,all);LS.set("hub_pace_fix_mar",true);}}catch(e){}})();
+const K_PROGRUNDUR="hub_prog_rundur_v1";
+function progGetDur(key){const all=LS.get(K_PROGRUNDUR,null)||{};return all[key]||RUN_DEFS[key].durMin;}
+function progSetDur(key,v){const all=LS.get(K_PROGRUNDUR,null)||{};all[key]=v;LS.set(K_PROGRUNDUR,all);}
+function progRunEasier(key){const nv=Math.min(RUN_DEFS[key].cap,progGetDur(key)+5);progSetDur(key,nv);renderProgram();flash("↗︎ Prochaine sortie : "+nv+" min");}
 function progFmtPace(sec){const m=Math.floor(sec/60),s=sec%60;return m+":"+String(s).padStart(2,"0");}
 function progFmtDur(sec){if(sec==null||isNaN(sec))return"";const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60;return h>0?(h+":"+String(m).padStart(2,"0")+":"+String(s).padStart(2,"0")):(m+":"+String(s).padStart(2,"0"));}
 function progSplitDur(sec){if(sec==null||isNaN(sec))return{h:"",m:"",s:""};return{h:Math.floor(sec/3600)||"",m:Math.floor((sec%3600)/60),s:sec%60};}
-function progParseDur(str){str=(str||"").trim();if(!str)return null;if(str.indexOf(":")>=0){const p=str.split(":").map(x=>parseInt(x)||0);if(p.length===3)return p[0]*3600+p[1]*60+p[2];if(p.length===2)return p[0]*60+p[1];return null;}const f=parseFloat(str.replace(",","."));return isNaN(f)?null:Math.round(f*60);}
 
 // Élastique utilisé (35/25/15/5 kg), par jour et par exo.
 const K_PROGBAND="hub_prog_band_v1";
@@ -2384,76 +2380,135 @@ function progValidRun(key){
   const deniv=($("prun_den").value.trim()===""?null:(parseInt($("prun_den").value)||0));
   const bpm=($("prun_bpm").value.trim()===""?null:(parseInt($("prun_bpm").value)||0));
   if(!(dist>0)){flash("Entre la distance 😉");return;}
-  if(!durSec){flash("Entre la durée (ex : 1:05:30) 😉");return;}
+  if(!durSec){flash("Entre la durée 😉");return;}
   const paceSec=Math.round(durSec/dist);
   const iso=todayISO();const all=progGetRunLog();all[iso]={runKey:key,dist,durSec,paceSec,deniv,bpm};LS.set(K_PROGRUNLOG,all);
-  const pc=progGetPace(key);let msg="";
-  if(paceSec<=pc.hi){pc.succ=(pc.succ||0)+1;
-    if(pc.succ>=2){pc.lo-=10;pc.hi-=10;pc.succ=0;msg=" 🎉 Allure cible accélérée → "+progFmtPace(pc.lo)+"–"+progFmtPace(pc.hi)+"/km";}
-    else msg=" ✅ objectif atteint ("+pc.succ+"/2 pour accélérer)";}
-  else{pc.succ=0;msg=" — objectif manqué, on garde l'allure";}
-  progSetPace(key,pc);
   progCreditDone(iso);
   renderProgram();
-  flash("🏃 Sortie notée : "+progFmtPace(paceSec)+"/km"+msg);
+  flash("🏃 Sortie notée : "+dist+" km en "+progFmtDur(durSec)+" ("+progFmtPace(paceSec)+"/km)");
 }
 
-/* --- Contenu des séances (programme fixe de Mathieu) ---
-   base = objectif de reps/série. L'objectif ne monte que si TOUTES les
-   séries atteignent la cible (voir progValidExo). Pas de plafond. --- */
-const EX_TRACT={k:"tractions",n:"Tractions (élastique)",sets:3,type:"reps",base:5,rest:"2 min",elastic:true,musc:"dos",
-  cue:"3×5-6. Élastique 35 ou 25 kg. Menton au-dessus de la barre, descente contrôlée.",
-  how:"Passe l'élastique sur la barre, un pied ou un genou dedans (il t'aide à monter). Tire jusqu'à passer le menton au-dessus de la barre, puis descends contrôlé bras tendus. Serre les omoplates, pas de balancier. Réduis l'élastique (35 → 25 → 15) au fil du temps.",
-  easier:"Plus l'élastique est épais (35 kg), plus il aide. Prends le 35 si 25 est trop dur."};
-const EX_DIPS={k:"dips",n:"Dips (élastique)",sets:3,type:"reps",base:5,rest:"2 min",elastic:true,
-  cue:"3×5-6. Élastique 25 ou 15 kg. Descends épaules au niveau des coudes.",
-  how:"Barre à dips, élastique sous les pieds/genoux pour t'assister. Bras tendus en haut, descends en pliant les coudes vers l'arrière jusqu'à ce que tes épaules arrivent au niveau des coudes, puis repousse. Réduis l'élastique au fil du temps.",
-  easier:"Élastique plus épais (25 kg) = plus d'aide. Trop dur même avec 15 ? Reste sur 25."};
-const EX_POMPL={k:"pompes_lentes",n:"Pompes lentes (descente 3 s)",sets:3,type:"reps",base:6,rest:"1 min 30",musc:"pecs",
-  cue:"3×6-7. Descente contrôlée en 3 secondes pleines.",
-  how:"Pompe classique, mains largeur d'épaules, corps gainé de la tête aux talons. Descends en 3 SECONDES pleines jusqu'à frôler le sol de la poitrine, puis remonte. Le tempo lent rend l'exo bien plus dur et efficace. Coudes à ~45°, ne creuse pas le bas du dos.",
-  easier:"Trop dur en fin de série ? Termine sur les genoux en gardant les 3 s de descente."};
-const EX_TIR={k:"tirages_aus",n:"Tirages australiens (dos)",sets:3,type:"reps",base:8,rest:"1 min 30",musc:"traps",
-  cue:"3×8. Corps gainé, tire la poitrine vers la barre.",
-  how:"Barre calée à hauteur de hanches (ou sous une table solide). Passe dessous, attrape la barre bras tendus, corps gainé en ligne droite (talons au sol). Tire ta poitrine vers la barre en serrant les omoplates, puis redescends contrôlé. Plus ton corps est horizontal, plus c'est dur.",
-  easier:"Trop dur ? Plie les genoux (pieds à plat au sol) ou relève la barre — corps plus vertical = plus facile."};
-const EX_DIPSB={k:"dips_banc",n:"Dips sur banc (ou négatives)",sets:3,type:"reps",base:6,rest:"1 min 30",
-  cue:"3×6-8. Mains derrière sur un banc, pieds devant.",
-  how:"Mains derrière toi sur un banc/une chaise, jambes tendues devant, talons au sol. Descends en pliant les coudes vers l'arrière, puis remonte. Variante : dips négatives sur la barre (descente lente 4-5 s, remontée aidée des pieds).",
-  easier:"Rapproche les pieds (genoux pliés) pour alléger. Éloigne-les pour durcir."};
-const EX_SQUAT={k:"squats",n:"Squats au poids du corps (contrôlés)",sets:3,type:"reps",base:10,rest:"1 min 30",musc:"quads",
-  cue:"3×10. Descente contrôlée, cuisses parallèles au sol.",
-  how:"Pieds largeur d'épaules, pointes légèrement vers l'extérieur. Descends en poussant les fesses vers l'arrière jusqu'à cuisses parallèles au sol, genoux dans l'axe des pieds, dos droit, poitrine haute. Contrôle la descente puis remonte en poussant dans les talons.",
-  easier:"Équilibre / profondeur difficile ? Squats sur une chaise (touche l'assise et remonte)."};
-const EX_FENTE={k:"fentes_arr",n:"Fentes arrière au poids du corps",sets:3,type:"reps",base:8,perLeg:true,rest:"1 min 30",
-  cue:"3×8 par jambe. Grand pas en arrière, genou vers le sol.",
-  how:"Debout, fais un grand pas en ARRIÈRE et descends jusqu'à ce que le genou arrière frôle le sol, buste droit, genou avant au-dessus de la cheville. Pousse pour revenir. Fais 8 d'un côté puis 8 de l'autre (ou alterne).",
-  easier:"Équilibre difficile ? Tiens-toi à un mur, ou réduis l'amplitude au début."};
+/* --- PHASE 1 — FORCE (lourd, faible reps) + base marathon ---
+   Objectif : développer la FORCE pure (pas le volume musculaire), compatible
+   avec la prépa marathon. Peu de reps, charge lourde, longues récups.
+   base = objectif de reps/série. L'objectif ne monte que si TOUTES les séries
+   atteignent la cible (voir progValidExo). Chiffres de départ calés sur ton
+   re-test après 2 mois sans muscu (1 traction, 2 chin-ups, 12 pompes, 0 dip). */
+
+// ===== HAUT DU CORPS A — Lundi (séance principale) =====
+const EX_TRACT={k:"f_tract",n:"Tractions pronation (dos)",sets:4,type:"reps",base:4,rest:"3 min",elastic:true,musc:"dos",
+  cue:"4×4. Élastique 35 kg pour l'instant. Mouvement roi du dos. Amplitude COMPLÈTE : bras tendus en bas → menton au-dessus de la barre.",
+  how:"Mains en pronation (paumes vers l'avant), un peu plus large que les épaules. Passe le gros élastique (35 kg) sur la barre, un genou ou un pied dedans — il t'assiste sur la montée. Pars bras totalement tendus (dead hang), tire en serrant les omoplates jusqu'à passer le MENTON au-dessus de la barre, puis redescends lentement (2-3 s) jusqu'à bras tendus. Pas de balancier, pas de demi-rep : une demi-traction ne compte pas. Quand les 4×4 passent facilement avec le 35, l'appli te fera monter les reps, puis tu passeras au 25 kg : c'est ça, gagner en force.",
+  easier:"Encore trop dur même avec le 35 ? Fais des NÉGATIVES : saute en haut, menton au-dessus de la barre, et retiens la descente le plus lentement possible (4-6 s). 4×3 négatives construisent la force pour la première vraie traction."};
+const EX_DIPS={k:"f_dips",n:"Dips barres (pecs/triceps)",sets:4,type:"reps",base:4,rest:"3 min",elastic:true,musc:"triceps",
+  cue:"4×4. Tu partais de 0 : on démarre à l'élastique 35 kg (grosse assistance) OU en dips négatives. Amplitude complète, épaules au niveau des coudes.",
+  how:"Sur les barres parallèles, élastique 35 kg sous les genoux/pieds pour t'aider à remonter. Bras tendus en haut, buste légèrement penché en avant, descends en pliant les coudes vers l'arrière jusqu'à ce que tes ÉPAULES arrivent au niveau de tes coudes, puis repousse jusqu'en haut. Si même avec le 35 c'est impossible, fais des négatives : pars en haut (saute si besoin) et retiens la descente 4-5 s. On réduira l'élastique au fil des semaines.",
+  easier:"Dips négatives (descente lente 4-5 s, remontée en t'aidant d'un saut) : c'est le meilleur point de départ quand tu es à 0 dip strict."};
+const EX_POMP={k:"f_pomp",n:"Pompes lestées (pecs)",sets:4,type:"reps",base:8,rest:"2 min",musc:"pecs",
+  cue:"4×8. Tu en fais 12 à vide → on ajoute de la charge (sac à dos lesté) pour rester dans le registre FORCE (8 reps dures).",
+  how:"Mets des disques dans un sac à dos (commence par ~5 kg) et enfile-le bien serré. Pompe classique, mains largeur d'épaules, corps gainé de la tête aux talons, fessiers serrés. Descends contrôlé jusqu'à frôler le sol de la poitrine, coudes à ~45° du corps, puis repousse. Le but : que 8 reps soient DURES. Si 4×8 deviennent faciles, l'appli monte l'objectif, puis tu ajoutes 2,5-5 kg dans le sac.",
+  easier:"Pas de sac lesté sous la main ? Fais-les en tempo lent (descente 3 s) ou en déclive (pieds surélevés) pour durcir sans charge."};
+const EX_ROW={k:"f_row",n:"Rowing australien lesté (dos/traps)",sets:4,type:"reps",base:8,rest:"2 min",musc:"traps",
+  cue:"4×8. Corps le plus horizontal possible, tire la poitrine vers la barre. Ajoute le sac lesté quand c'est trop facile.",
+  how:"Barre calée à hauteur de hanches (ou sous une table solide). Passe dessous, attrape-la bras tendus un peu plus large que les épaules, corps gainé en ligne droite, talons au sol. Tire ta POITRINE vers la barre en serrant les omoplates à fond, marque un temps en haut, puis redescends contrôlé jusqu'à bras tendus. Plus ton corps est horizontal, plus c'est lourd. Progression : horizontalise-toi, puis mets le sac lesté sur le dos.",
+  easier:"Trop dur ? Plie les genoux (pieds à plat) ou relève la barre — plus ton corps est vertical, plus c'est léger."};
+const EX_WHEEL={k:"f_wheel",n:"Roue abdominale (gainage)",sets:3,type:"reps",base:5,rest:"2 min",musc:"abdos",
+  cue:"3×5. À genoux. Déroule le plus loin possible SANS creuser le bas du dos.",
+  how:"À genoux, roue abdominale dans les mains, dos ROND (rétroversion du bassin, nombril rentré). Déroule lentement vers l'avant le plus loin que tu contrôles sans que le bas du dos ne se creuse, puis reviens en tirant avec les abdos. La règle de sécurité : si ton bas du dos cambre, c'est que tu es allé trop loin — réduis l'amplitude.",
+  easier:"Débute avec une petite amplitude (déroule juste un peu) et une butée (mur) pour arrêter la roue. Augmente la distance semaine après semaine."};
+
+// ===== BAS DU CORPS — Jeudi =====
+const EX_BULG={k:"f_bulg",n:"Squat bulgare lesté (quadriceps)",sets:4,type:"reps",base:6,perLeg:true,rest:"2 min",musc:"quads",
+  cue:"4×6 par jambe. Pied arrière surélevé. L'exo de force jambes n°1 à la maison. Haltères ou sac lesté en main.",
+  how:"Pose le dessus du pied arrière sur une chaise/un banc derrière toi, jambe avant à ~60-70 cm devant. Tiens tes haltères (3/5 kg) le long du corps ou le sac lesté. Descends droit vers le bas en pliant la jambe avant jusqu'à ce que la cuisse soit parallèle au sol (genou arrière vers le sol), buste droit, puis remonte en poussant dans le talon avant. 6 reps par jambe. C'est l'exercice qui remplace le squat lourd quand on n'a pas de barre.",
+  easier:"Équilibre difficile ? Pose une main au mur, et commence SANS charge avant d'ajouter les haltères."};
+const EX_PISTOL={k:"f_pistol",n:"Pistol squat progressif (quads/équilibre)",sets:3,type:"reps",base:4,perLeg:true,rest:"2 min",
+  cue:"3×4 par jambe. Squat sur une jambe, assisté au début. Force unilatérale + mobilité.",
+  how:"Sur une jambe, l'autre tendue devant toi. Au début, tiens-toi à un montant de porte ou descends vers une chaise (touche l'assise, remonte). Descends le plus bas que tu contrôles sur la jambe d'appui, puis remonte. Objectif à terme : pistol complet sans aide. 4 par jambe.",
+  easier:"Assis-toi sur une chaise haute sur une jambe et relève-toi (box pistol), ou tiens-toi fermement à un support pour t'assister à la remontée."};
+const EX_HIP={k:"f_hip",n:"Hip thrust lesté (fessiers)",sets:4,type:"reps",base:8,rest:"2 min",musc:"fessiers",
+  cue:"4×8. Haut du dos sur un canapé/banc, disque ou sac lesté sur le bassin. Serre fort les fessiers en haut.",
+  how:"Haut du dos appuyé sur le bord d'un canapé ou d'un banc, pieds à plat au sol largeur de hanches. Pose un disque (~20 kg) ou le sac lesté sur le bassin (protège avec une serviette). Descends les fesses vers le sol, puis pousse le bassin vers le haut jusqu'à ce que ton corps forme une ligne droite épaules-hanches-genoux, en SERRANT les fessiers à fond en haut (1 s de pause). Redescends contrôlé.",
+  easier:"Commence au poids du corps pour sentir la contraction des fessiers, puis ajoute la charge."};
+const EX_CALF={k:"f_calf",n:"Mollets debout 1 jambe lesté",sets:4,type:"reps",base:10,perLeg:true,rest:"90 s",musc:"mollets",
+  cue:"4×10 par jambe. Sur une marche, amplitude maximale, haltère en main.",
+  how:"Debout sur une jambe, l'avant du pied sur le bord d'une marche (talon dans le vide). Tiens un haltère du côté de la jambe travaillée, l'autre main au mur pour l'équilibre. Descends le talon le plus bas possible (étirement), puis monte sur la pointe le plus haut possible (contraction 1 s). Amplitude COMPLÈTE, c'est ce qui fait grandir la force du mollet et protège de la périostite.",
+  easier:"Trop dur ? Fais-les sans haltère, ou sur les deux jambes au début."};
+const EX_TIB={k:"f_tib",n:"Tibial anti-périostite (tibias)",sets:3,type:"reps",base:15,rest:"60 s",
+  cue:"3×15. Lève les orteils vers le tibia. PRÉVENTION essentielle vu tes tibias sensibles en course.",
+  how:"Dos contre un mur, talons à ~15-20 cm du mur, jambes tendues. Lève la pointe des pieds (orteils) vers le haut le plus haut possible en contractant l'avant du tibia, puis redescends lentement. 15 reps. Cet exercice muscle le jambier antérieur et réduit nettement le risque de périostite — fais-le religieusement.",
+  easier:"Assis sur une chaise, même mouvement de pointe de pied. Tu peux lester avec un élastique ou un petit poids sur l'avant du pied."};
+const EX_LEGR={k:"f_legr",n:"Relevés de genoux/jambes suspendu (abdos)",sets:3,type:"reps",base:8,rest:"90 s",musc:"abdos",
+  cue:"3×8. Suspendu à la barre de traction. Monte les genoux (puis jambes tendues) sans balancer.",
+  how:"Suspendu à la barre, bras tendus, corps immobile. Monte les genoux vers la poitrine en enroulant le bassin (rétroversion), pas juste en pliant les hanches — pense à rapprocher le pubis du sternum. Redescends LENTEMENT sans te balancer. Quand 3×8 genoux passent, tends les jambes (relevés jambes tendues, bien plus durs).",
+  easier:"Trop dur suspendu ? Fais-les allongé au sol (relevés de jambes) ou genoux semi-fléchis suspendu."};
+
+// ===== HAUT DU CORPS B — Vendredi (optionnelle, plus légère) =====
+const EX_OHP={k:"f_ohp",n:"Développé épaules haltères",sets:4,type:"reps",base:8,rest:"2 min",musc:"epaules",
+  cue:"4×8. Haltères 3/5 kg (ou sac lesté tenu). Pousse au-dessus de la tête, gainage serré.",
+  how:"Debout ou assis, dos droit, un haltère dans chaque main au niveau des épaules, paumes vers l'avant. Pousse les haltères à la verticale au-dessus de la tête jusqu'à bras tendus sans cambrer le bas du dos (serre les abdos et les fessiers), puis redescends contrôlé au niveau des épaules. Avec tes 5 kg, vise des reps lentes et propres ; si trop facile, ralentis le tempo et marque une pause en bas.",
+  easier:"Pars avec les 3 kg, ou fais une main à la fois pour mieux contrôler."};
+const EX_CHIN={k:"f_chin",n:"Chin-ups supination (biceps/dos)",sets:4,type:"reps",base:3,rest:"3 min",elastic:true,musc:"biceps",
+  cue:"4×3. Tu en fais 2 strictes → on vise 3 propres (élastique léger si besoin). Amplitude COMPLÈTE : descente totale bras tendus.",
+  how:"Mains en SUPINATION (paumes vers toi), largeur d'épaules. Pars bras totalement tendus (dead hang), tire en pensant à amener les coudes vers les hanches jusqu'à passer le menton au-dessus de la barre, puis redescends lentement jusqu'à bras COMPLÈTEMENT tendus. Oui, pour les biceps il faut descendre tout en bas à chaque rep — une demi-rep ne compte pas. Mets un élastique fin (15 kg) seulement si tu ne tiens pas les 3 reps strictes.",
+  easier:"Négatives supination : saute en haut, retiens la descente 4-6 s. Excellent pour passer de 2 à 5 chin-ups."};
+const EX_DIAM={k:"f_diam",n:"Pompes diamant (triceps)",sets:3,type:"reps",base:8,rest:"90 s",
+  cue:"3×8. Mains en losange sous la poitrine. Cible les triceps.",
+  how:"Position de pompe, mains rapprochées sous la poitrine, pouces et index qui se touchent en formant un losange (diamant). Corps gainé, descends jusqu'à frôler tes mains de la poitrine, coudes serrés près du corps, puis repousse. Plus dur que la pompe classique car les triceps travaillent davantage.",
+  easier:"Trop dur ? Écarte un peu les mains, ou termine sur les genoux en gardant le contrôle."};
+const EX_FACE={k:"f_face",n:"Face pull élastique (épaules arrière/posture)",sets:3,type:"reps",base:15,rest:"60 s",
+  cue:"3×15. Élastique à hauteur de visage, tire vers le front. Santé des épaules + posture.",
+  how:"Accroche un élastique (15 ou 5 kg) à hauteur de visage (poignée de porte haute, barre). Attrape-le à deux mains, recule pour mettre en tension. Tire l'élastique vers ton FRONT en écartant les mains et en serrant les omoplates, coudes hauts, puis reviens contrôlé. C'est l'exercice de prévention qui équilibre tout le travail de poussée (pompes/dips) et garde tes épaules saines.",
+  easier:"Prends l'élastique le plus fin (5 kg) et concentre-toi sur la contraction des omoplates plutôt que sur la charge."};
+const EX_PLANK={k:"f_plank",n:"Gainage planche (abdos)",sets:3,type:"hold",base:40,rest:"60 s",musc:"abdos",
+  cue:"3×40 s. Corps en ligne parfaite, ne creuse pas le dos. Le chrono = tes secondes tenues.",
+  how:"Sur les avant-bras et la pointe des pieds, coudes sous les épaules. Corps en LIGNE DROITE de la tête aux talons : serre les abdos et les fessiers, rentre légèrement le bassin (pas de dos creusé ni de fesses en l'air). Respire normalement et tiens. Note le nombre de secondes tenues dans chaque case série.",
+  easier:"Trop dur 40 s ? Tiens 20-25 s propres plutôt que 40 s avachies — la qualité prime. Monte progressivement."};
+
 const PROG_SESSIONS={
-  swHaut:{title:"Street Workout — Haut du corps",emoji:"💪",focus:"Dos · Pecs · Bras",
-    warm:"10 min : mobilité des poignets, des épaules et des coudes.",
-    cooldown:"5 min : étirements légers.",
-    exos:[EX_TRACT,EX_TIR,EX_DIPS,EX_DIPSB,EX_POMPL]},
-  swJambes:{title:"Street Workout — Essentiel + Jambes",emoji:"🦵",focus:"Haut du corps + jambes",
-    warm:"10 min : mobilité articulaire globale.",
-    cooldown:"5 min : étirements légers.",
-    exos:[EX_TRACT,EX_DIPS,EX_POMPL,EX_SQUAT,EX_FENTE]}
+  forceHaut:{title:"Force — Haut du corps A",emoji:"💪",focus:"Dos · Pecs · Bras · Gainage",
+    warm:"8-10 min : mobilité poignets/épaules/coudes, 10 rotations de bras, 2 séries légères de pompes et quelques tractions à vide à l'élastique pour préparer.",
+    cooldown:"5 min : étirements doux dos, pecs et épaules.",
+    exos:[EX_TRACT,EX_DIPS,EX_POMP,EX_ROW,EX_WHEEL]},
+  forceBas:{title:"Force — Bas du corps",emoji:"🦵",focus:"Jambes · Fessiers · Mollets · Tibias",
+    warm:"8-10 min : mobilité hanches/chevilles, 20 squats à vide, montées de genoux, et réveil des mollets.",
+    cooldown:"5 min : étirements quadriceps, fessiers et mollets.",
+    exos:[EX_BULG,EX_PISTOL,EX_HIP,EX_CALF,EX_TIB,EX_LEGR]},
+  forceHautB:{title:"Force — Haut du corps B",emoji:"🔁",focus:"Épaules · Bras · Posture (optionnelle)",
+    warm:"8 min : mobilité épaules, rotations, élastique léger pour activer.",
+    cooldown:"5 min : étirements épaules et bras.",
+    exos:[EX_OHP,EX_CHIN,EX_DIAM,EX_FACE,EX_PLANK]}
 };
 
-/* --- Minuteur de repos (par exo) --- */
-let progTimerInt=null;
-function progBeep(){try{const c=new(window.AudioContext||window.webkitAudioContext)();const o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.value=880;g.gain.value=.25;o.start();o.stop(c.currentTime+.5);}catch(e){}}
-function progRestSec(r){if(!r)return 90;return r.indexOf("min")>=0?parseInt(r)*60:parseInt(r);}
-function progStartTimer(sec){
-  clearInterval(progTimerInt);const el=$("progTimer");if(!el)return;
-  el.classList.remove("hidden","fini");$("progTimerLbl").textContent="Repos";
-  let left=sec;$("progTimerVal").textContent=left+" s";
-  progTimerInt=setInterval(()=>{left--;
-    if(left<=0){clearInterval(progTimerInt);$("progTimerVal").textContent="GO ! 💪";el.classList.add("fini");progBeep();try{if(navigator.vibrate)navigator.vibrate([200,100,200]);}catch(e){}setTimeout(()=>el.classList.add("hidden"),3500);}
-    else $("progTimerVal").textContent=left+" s";
-  },1000);
+/* --- Minuteur de repos (par exo) ---
+   Countdown basé sur un TIMESTAMP de fin (pas un décompte 1 s par 1 s) : reste
+   juste même si l'iPhone se verrouille ou que l'app passe en arrière-plan
+   (iOS gèle les setInterval → avant, le minuteur se figeait ou sautait). */
+let progTimerInt=null,progTimerHide=null,progTimerEnd=0;
+function progBeep(){try{const c=new(window.AudioContext||window.webkitAudioContext)();if(c.state==="suspended"){c.resume();}const o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.value=880;g.gain.value=.25;o.start();o.stop(c.currentTime+.5);setTimeout(()=>{try{c.close();}catch(e){}},900);}catch(e){}}
+function progRestSec(r){if(!r)return 90;const s=(""+r).toLowerCase();const mn=s.match(/(\d+)\s*min/);let t=0;if(mn){t+=parseInt(mn[1])*60;const tail=s.slice(mn.index+mn[0].length).match(/(\d+)/);if(tail)t+=parseInt(tail[1]);}else{const sc=s.match(/(\d+)\s*s/);if(sc)t+=parseInt(sc[1]);}if(!t)t=parseInt(s)||90;return t;}
+function progTimerFmt(n){if(n<0)n=0;if(n>=60){const m=Math.floor(n/60),s=n%60;return m+":"+String(s).padStart(2,"0");}return n+" s";}
+function progTimerTick(){
+  const el=$("progTimer");if(!el){clearInterval(progTimerInt);progTimerInt=null;return;}
+  const vEl=$("progTimerVal");if(!vEl)return;
+  const left=Math.round((progTimerEnd-Date.now())/1000);
+  if(left<=0){
+    clearInterval(progTimerInt);progTimerInt=null;
+    vEl.textContent="GO ! 💪";el.classList.add("fini");progBeep();
+    try{if(navigator.vibrate)navigator.vibrate([200,100,200]);}catch(e){}
+    clearTimeout(progTimerHide);progTimerHide=setTimeout(()=>{if(!progTimerInt)el.classList.add("hidden");},3500);
+  } else vEl.textContent=progTimerFmt(left);
 }
-function progStopTimer(){clearInterval(progTimerInt);const el=$("progTimer");if(el)el.classList.add("hidden");}
+function progStartTimer(sec){
+  const el=$("progTimer");if(!el)return;
+  clearInterval(progTimerInt);clearTimeout(progTimerHide);progTimerHide=null;
+  progTimerEnd=Date.now()+sec*1000;
+  el.classList.remove("hidden","fini");$("progTimerLbl").textContent="Repos";
+  $("progTimerVal").textContent=progTimerFmt(sec);
+  progTimerInt=setInterval(progTimerTick,250);
+}
+function progStopTimer(){clearInterval(progTimerInt);progTimerInt=null;clearTimeout(progTimerHide);progTimerHide=null;const el=$("progTimer");if(el)el.classList.add("hidden");}
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&progTimerInt)progTimerTick();});
 
 /* --- Reps par série (état du jour) → meilleure série auto --- */
 const K_PROGSETS="hub_prog_sets_v1";
@@ -2501,6 +2556,7 @@ function progValidExo(key){
 
 function progDayMini(key){
   if(key==="rest")return{i:"😴",c:"#9fb0d0"};
+  if(key==="volley")return{i:"🏐",c:"#f59e0b"};
   if(key&&key.indexOf("run")===0)return{i:"🏃",c:"#3b82f6"};
   const S=PROG_SESSIONS[key];return{i:S?S.emoji:"💪",c:"#C6A15B"};
 }
@@ -2515,21 +2571,21 @@ function progRenderSession(iso){
       <span class="pill" style="background:#9fb0d022;color:#9fb0d0;">Dimanche</span></div>
     <p class="sub" style="margin-top:8px;line-height:1.7;">Récupération complète et assimilation de la charge de la semaine. Étire-toi, marche, dors bien — c'est là que le corps encaisse et progresse.</p></div>`;
 
-  // ---- Jour de COURSE ----
+  // ---- Jour de COURSE (base marathon, footing lent — cible = une DURÉE) ----
   if(key.indexOf("run")===0){
-    const d=RUN_DEFS[key];const pc=progGetPace(key);
+    const d=RUN_DEFS[key];const tgt=progGetDur(key);
     const lg=progGetRunLog()[iso];const pv=(lg&&lg.runKey===key)?lg:null;
     let body=`<ul style="list-style:none;padding:0;margin:10px 0 0;">
-      <li style="padding:8px 0;border-bottom:1px solid var(--border);line-height:1.6;"><b>Distance :</b> ${d.dist} km</li>
-      <li style="padding:8px 0;border-bottom:1px solid var(--border);line-height:1.6;"><b>Allure cible :</b> ${progFmtPace(pc.lo)} – ${progFmtPace(pc.hi)} /km${pc.succ?` <span style="color:#22c55e;">· ${pc.succ}/2 réussite pour accélérer</span>`:""}</li>
+      <li style="padding:8px 0;border-bottom:1px solid var(--border);line-height:1.6;"><b>Objectif du jour :</b> ${tgt} min de course</li>
+      <li style="padding:8px 0;border-bottom:1px solid var(--border);line-height:1.6;"><b>Allure :</b> LENTE, au ressenti — tu dois pouvoir parler en courant. On construit le moteur, pas le chrono.</li>
     </ul>
-    <div style="text-align:right;margin-top:4px;"><button class="progMini" style="font-size:11px;padding:4px 9px;" onclick="progResetPace('${key}')">↺ Remettre l'allure de départ</button></div>`;
-    body+=`<div style="margin-top:10px;padding:9px 11px;border-radius:10px;background:#ef444414;border:1px solid #ef444440;font-size:12px;line-height:1.55;">🦵 <b>Tibias sensibles</b> : privilégie le souple (terre, piste), petites foulées / cadence ~180, et stop si douleur vive.</div>`;
+    <div style="text-align:right;margin-top:4px;"><button class="progMini" style="font-size:11px;padding:4px 9px;" onclick="progRunEasier('${key}')">↗︎ C'était facile → +5 min la prochaine fois</button></div>`;
+    body+=`<div style="margin-top:10px;padding:9px 11px;border-radius:10px;background:#ef444414;border:1px solid #ef444440;font-size:12px;line-height:1.55;">🦵 <b>Tibias sensibles</b> : privilégie le souple (terre, piste), petites foulées / cadence ~180, et stop si douleur vive. On monte la durée progressivement, jamais par à-coups.</div>`;
     if(isToday){
       const hms=progSplitDur(pv?pv.durSec:null);
       const durCss="width:100%;text-align:center;background:var(--card2);border:1px solid var(--border);border-radius:8px;color:var(--txt);padding:8px 4px;font-size:16px;font-weight:800;";
-      body+=`<div style="margin-top:12px;font-size:11.5px;color:var(--muted2);">Après ta sortie, renseigne tes chiffres — je note tout, et l'allure cible s'accélère (−10 s) après 2 réussites.</div>
-      <label style="display:block;margin-top:8px;">Durée</label>
+      body+=`<div style="margin-top:12px;font-size:11.5px;color:var(--muted2);">Après ta sortie, renseigne tes chiffres — je note tout (distance, durée, allure réelle, dénivelé, FC).</div>
+      <label style="display:block;margin-top:8px;">Durée totale</label>
       <div style="display:flex;gap:6px;align-items:center;margin-top:2px;">
         <div style="flex:1;text-align:center;"><input id="prun_h" type="number" min="0" inputmode="numeric" placeholder="h" value="${hms.h}" style="${durCss}"><div style="font-size:9px;color:var(--muted2);margin-top:2px;">heures</div></div>
         <span style="font-weight:900;color:var(--muted2);">:</span>
@@ -2538,7 +2594,7 @@ function progRenderSession(iso){
         <div style="flex:1;text-align:center;"><input id="prun_s" type="number" min="0" max="59" inputmode="numeric" placeholder="sec" value="${hms.s}" style="${durCss}"><div style="font-size:9px;color:var(--muted2);margin-top:2px;">secondes</div></div>
       </div>
       <div class="row" style="margin-top:8px;">
-        <div><label>Distance (km)</label><input id="prun_dist" type="number" step="0.1" inputmode="decimal" value="${pv?pv.dist:d.dist}"></div>
+        <div><label>Distance (km)</label><input id="prun_dist" type="number" step="0.1" inputmode="decimal" placeholder="ex : 5.2" value="${pv?pv.dist:""}"></div>
         <div><label>Dénivelé (m)</label><input id="prun_den" type="number" inputmode="numeric" placeholder="ex : 45" value="${pv&&pv.deniv!=null?pv.deniv:""}"></div>
       </div>
       <div class="row" style="margin-top:6px;">
@@ -2546,11 +2602,22 @@ function progRenderSession(iso){
         <div></div>
       </div>
       <button class="btn gold" style="margin-top:12px;" onclick="progValidRun('${key}')">✅ Valider ma sortie (+25 XP)</button>
-      ${pv?`<div style="text-align:center;font-size:12px;color:#22c55e;margin-top:8px;">Enregistrée : ${progFmtPace(pv.paceSec)}/km${pv.deniv!=null?" · +"+pv.deniv+" m":""}${pv.bpm!=null?" · "+pv.bpm+" bpm":""}</div>`:""}`;
+      ${pv?`<div style="text-align:center;font-size:12px;color:#22c55e;margin-top:8px;">Enregistrée : ${pv.dist} km en ${progFmtDur(pv.durSec)} · ${progFmtPace(pv.paceSec)}/km${pv.deniv!=null?" · +"+pv.deniv+" m":""}${pv.bpm!=null?" · "+pv.bpm+" bpm":""}</div>`:""}`;
     }
     return`<div class="card" style="border:1px solid #3b82f655;">
-      <h2 style="margin:0;"><span class="dot" style="background:#3b82f6"></span>🏃 ${d.sub} — ${d.dist} km</h2>
+      <h2 style="margin:0;"><span class="dot" style="background:#3b82f6"></span>🏃 ${d.sub} — ${tgt} min</h2>
       ${body}</div>`;
+  }
+
+  // ---- Jour de VOLLEY (club, mardi soir) ----
+  if(key==="volley"){
+    const done=!!progGetDone()[iso];
+    return`<div class="card" style="border:1px solid #f59e0b55;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <h2 style="margin:0;"><span class="dot" style="background:#f59e0b"></span>🏐 Volley (club)</h2>
+        <span class="pill" style="background:#f59e0b22;color:#f59e0b;">Mardi 21h-23h</span></div>
+      <p class="sub" style="margin-top:8px;line-height:1.7;">Ta séance de sport collectif de la semaine : cardio, explosivité, sauts et plaisir. Ça compte comme une vraie séance — pas besoin de rajouter de la muscu ce soir-là. Échauffe bien tes chevilles et tes épaules avant de jouer.</p>
+      ${progDoneBtn(iso,done,isToday)}</div>`;
   }
 
   // ---- Jour de STREET WORKOUT ----
@@ -2776,14 +2843,22 @@ function renderRepas(){
   }).join("");
 }
 
+const K_PROGSTART="hub_prog_start_v1";
+function progDaysIn(){let s=LS.get(K_PROGSTART,null);if(!s){s=todayISO();LS.set(K_PROGSTART,s);}return Math.max(0,Math.round((new Date(todayISO()+"T12:00:00")-new Date(s+"T12:00:00"))/86400000));}
 function renderProgram(){
   const host=$("progHost");if(!host)return;
   const iso=todayISO();
   const banner=`<div class="card" style="background:linear-gradient(135deg,#122a5c,#0f2049);border:1px solid #C6A15B55;">
-    <div style="font-size:11px;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;">Mon programme</div>
-    <div style="font-size:16px;font-weight:800;color:var(--gold-l);">🏋️ Semaine type — Street Workout + Course</div>
-    <p class="sub" style="margin-top:6px;line-height:1.6;">Lun/Mer/Ven muscu · Mar/Jeu/Sam course · Dim repos. Un exo monte d'1 rep quand tu réussis <b>toutes</b> tes séries à l'objectif ; l'allure course s'accélère après 2 réussites.</p></div>`;
-  host.innerHTML=banner+progRenderSession(iso)+progAddCard()+progRenderWeek(iso)+progRenderHistory();
+    <div style="font-size:11px;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;">Mon programme · Phase 1</div>
+    <div style="font-size:16px;font-weight:800;color:var(--gold-l);">🏋️ Force maximale + base marathon</div>
+    <p class="sub" style="margin-top:6px;line-height:1.6;">Lun force haut · Mar volley · Mer footing · Jeu force bas · Ven force haut B (option) · Sam sortie longue · Dim repos. On vise la <b>force pure</b> (lourd, peu de reps) sans prendre de volume, pour rester léger et courir loin. Un exo monte d'1 rep quand tu réussis <b>toutes</b> tes séries à l'objectif ; en course, la durée grandit quand c'était facile.</p></div>`;
+  let reprise="";
+  if(progDaysIn()<21){
+    reprise=`<div class="card" style="background:#f59e0b14;border:1px solid #f59e0b55;">
+      <div style="font-size:13px;font-weight:800;color:#f59e0b;">🌱 Phase de reprise (≈ 3 premières semaines)</div>
+      <p class="sub" style="margin-top:6px;line-height:1.6;">Tu reprends après 2 mois d'arrêt : tes tendons et tes articulations sont en retard sur tes muscles. Pendant ces 3 semaines, on <b>reconstruit les bases</b> : technique parfaite, on garde <b>1 à 2 reps en réserve</b> (jamais l'échec), charges légères avant d'aller lourd. Ne brûle pas les étapes — c'est ce qui évite la blessure et fait que la force revient vite (mémoire musculaire). Après, on passe au vrai lourd.</p></div>`;
+  }
+  host.innerHTML=banner+reprise+progRenderSession(iso)+progAddCard()+progRenderWeek(iso)+progRenderHistory();
 }
 
 /* --- Ajouter une séance (en plus de celle du jour) --- */
@@ -2883,9 +2958,9 @@ function progSaveCali(){
 let progHistOpen=false;
 function progHistToggle(){progHistOpen=!progHistOpen;const el=$("progHistBody");if(el)el.style.display=progHistOpen?"block":"none";const btn=$("progHistBtn");if(btn)btn.textContent=progHistOpen?"Masquer":"Voir";}
 function progRunLine(r){
-  const lbl=(r.runKey&&RUN_DEFS[r.runKey])?(RUN_DEFS[r.runKey].sub+" "+RUN_DEFS[r.runKey].dist+" km"):"Course";
+  const lbl=(r.runKey&&RUN_DEFS[r.runKey])?RUN_DEFS[r.runKey].sub:"Course";
   const parts=[];
-  if(r.dist&&!(r.runKey&&RUN_DEFS[r.runKey]))parts.push((""+r.dist).replace(".",",")+" km");
+  if(r.dist)parts.push((""+r.dist).replace(".",",")+" km");
   if(r.durSec)parts.push(progFmtDur(r.durSec));
   if(r.paceSec)parts.push(progFmtPace(r.paceSec)+"/km");
   if(r.deniv!=null)parts.push("+"+r.deniv+" m");
