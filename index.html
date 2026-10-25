@@ -422,6 +422,7 @@
     <button class="navbtn" data-tab="profil"><span class="ic">👤</span> Profil</button>
     <button class="navbtn" data-tab="infos"><span class="ic">📌</span> Infos utiles</button>
     <button class="navbtn" data-tab="courses"><span class="ic">🛒</span> Courses</button>
+    <button class="navbtn" data-tab="repas"><span class="ic">🍽️</span> Repas</button>
     <button class="navbtn" data-tab="animes"><span class="ic">🍥</span> Animes</button>
     <button class="navbtn" data-tab="ia"><span class="ic">🤖</span> Assistant</button>
     <button class="navbtn" data-tab="reglages"><span class="ic">⚙️</span> Réglages</button>
@@ -826,6 +827,38 @@
   </div>
 </div>
 
+<!-- ============================= REPAS ============================= -->
+<div class="tab" id="tab-repas">
+  <div class="wrap">
+    <div class="card">
+      <h2><span class="dot"></span>🍽️ Mes repas protéinés</h2>
+      <p class="sub">Une bibliothèque de repas autour de tes aliments. Filtre par protéines, calories, temps — ou active le <b>mode frigo</b> pour voir ce que tu peux cuisiner avec ce que tu as.</p>
+    </div>
+    <div class="card">
+      <div class="section-title" style="margin-top:0;">🔎 Filtres</div>
+      <div class="row" style="align-items:flex-end;">
+        <div><label>Protéines ≥ (g)</label><input type="number" id="rpProt" min="0" placeholder="ex : 30" inputmode="numeric" oninput="renderRepas()"></div>
+        <div><label>Calories ≤ (kcal)</label><input type="number" id="rpKcal" min="0" placeholder="ex : 600" inputmode="numeric" oninput="renderRepas()"></div>
+        <div><label>Temps ≤ (min)</label><input type="number" id="rpTime" min="0" placeholder="ex : 20" inputmode="numeric" oninput="renderRepas()"></div>
+      </div>
+      <div class="row" style="margin-top:10px;">
+        <div style="flex:1;"><label>Catégorie</label><select id="rpCat" onchange="renderRepas()"><option value="">Toutes</option><option>Déj / Dîner</option><option>Petit-déj</option><option>Collation</option></select></div>
+        <button class="btn small ghost" id="rpClear" style="flex:0 0 auto;" onclick="repasClearFilters()">↺ Réinitialiser</button>
+      </div>
+      <div style="margin-top:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <button class="btn small" id="rpFridgeBtn" onclick="repasToggleFridge()">🧊 Mode frigo : OFF</button>
+        <span class="sub" style="margin:0;">coche ce que tu as, ça classe les recettes réalisables en premier.</span>
+      </div>
+      <div id="rpFridge" style="display:none;margin-top:12px;"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin:4px 2px 8px;">
+      <span id="rpCount" class="section-title" style="margin:0;"></span>
+      <button class="btn small ghost" style="flex:0 0 auto;" onclick="repasOpenAdd()">＋ Recette perso</button>
+    </div>
+    <div id="rpList"></div>
+  </div>
+</div>
+
 <!-- ============================= REGLAGES ============================= -->
 <div class="tab" id="tab-reglages">
   <div class="wrap">
@@ -1024,6 +1057,7 @@ document.querySelectorAll(".navbtn").forEach(b=>{
     if(t==="ia")renderChat();
     if(t==="rangs")syncRangs();
     if(t==="animes")refreshAiringAL();
+    if(t==="repas")renderRepas();
   });
 });
 $("hRank").addEventListener("click",()=>document.querySelector('.navbtn[data-tab="rangs"]').click());
@@ -2618,6 +2652,128 @@ function progRenderWeek(iso){
   }
   return`<div class="card"><div class="section-title" style="margin-top:0;">📅 Ta semaine</div>
     <div style="display:flex;gap:5px;">${cells}</div></div>`;
+}
+
+/* =================================================================
+   REPAS — bibliothèque protéinée française + mode frigo
+   ================================================================= */
+const K_RPFRIDGE="hub_repas_fridge_v1", K_RPCUSTOM="hub_repas_custom_v1";
+const RECIPES=[
+  {id:"r1",n:"Poulet riz brocolis",emoji:"🍗",cat:"Déj / Dîner",kcal:520,prot:45,min:25,ing:["poulet","riz","brocolis"],base:["huile d'olive","ail","sel"],steps:["Cuire le riz. Faire sauter le poulet en dés dans l'huile avec l'ail.","Cuire le brocolis vapeur 6-8 min, mélanger, saler."]},
+  {id:"r2",n:"Steak haricots verts",emoji:"🥩",cat:"Déj / Dîner",kcal:430,prot:40,min:15,ing:["steak haché","haricots verts"],base:["beurre","ail","sel"],steps:["Poêler le steak 2-3 min par face.","Faire revenir les haricots verts au beurre avec l'ail."]},
+  {id:"r3",n:"Pâtes poulet crème",emoji:"🍝",cat:"Déj / Dîner",kcal:640,prot:42,min:20,ing:["pâtes","poulet","crème","parmesan"],base:["ail","sel","poivre"],steps:["Cuire les pâtes. Saisir le poulet.","Ajouter la crème, laisser réduire, mélanger aux pâtes + parmesan."]},
+  {id:"r4",n:"Gnocchis poulet tomate",emoji:"🍅",cat:"Déj / Dîner",kcal:580,prot:38,min:20,ing:["gnocchis","poulet","sauce tomate","parmesan"],base:["oignon","ail"],steps:["Poêler gnocchis + poulet.","Ajouter la sauce tomate, mijoter 5 min, parmesan."]},
+  {id:"r5",n:"Omelette brocolis fromage",emoji:"🍳",cat:"Petit-déj",kcal:360,prot:28,min:12,ing:["œuf","brocolis","fromage"],base:["sel","huile d'olive"],steps:["Cuire le brocolis. Battre les œufs.","Verser dans la poêle, ajouter brocolis + fromage, plier."]},
+  {id:"r6",n:"Riz cantonais protéiné",emoji:"🍚",cat:"Déj / Dîner",kcal:520,prot:32,min:20,ing:["riz","œuf","petits pois","poulet"],base:["sauce soja","oignon","huile d'olive"],steps:["Cuire le riz (idéalement la veille). Brouiller les œufs à part.","Sauter riz + poulet + petits pois, ajouter œufs et sauce soja."]},
+  {id:"r7",n:"Lentilles au poulet",emoji:"🍛",cat:"Déj / Dîner",kcal:520,prot:44,min:30,ing:["lentilles","poulet"],base:["oignon","ail","huile d'olive"],steps:["Cuire les lentilles 20-25 min. Saisir le poulet avec l'oignon.","Mélanger, assaisonner."]},
+  {id:"r8",n:"Salade lentilles œufs",emoji:"🥗",cat:"Déj / Dîner",kcal:430,prot:30,min:20,ing:["lentilles","œuf"],base:["oignon","moutarde","huile d'olive","vinaigre"],steps:["Cuire lentilles + œufs durs.","Mélanger avec vinaigrette moutarde + oignon émincé."]},
+  {id:"r9",n:"Pâtes bolognaise",emoji:"🍝",cat:"Déj / Dîner",kcal:620,prot:40,min:25,ing:["pâtes","steak haché","sauce tomate"],base:["oignon","ail"],steps:["Revenir oignon + steak haché.","Ajouter la sauce tomate, mijoter 10 min, servir sur les pâtes."]},
+  {id:"r10",n:"Poulet riz petits pois",emoji:"🍗",cat:"Déj / Dîner",kcal:540,prot:44,min:25,ing:["poulet","riz","petits pois"],base:["oignon","huile d'olive"],steps:["Cuire le riz. Saisir le poulet.","Ajouter les petits pois, mélanger."]},
+  {id:"r11",n:"Gnocchis poêlés aux œufs",emoji:"🍳",cat:"Déj / Dîner",kcal:520,prot:26,min:15,ing:["gnocchis","œuf","parmesan"],base:["beurre","sel"],steps:["Poêler les gnocchis au beurre jusqu'à doré.","Casser les œufs dessus, cuire, parmesan."]},
+  {id:"r12",n:"Steak riz brocolis",emoji:"🥩",cat:"Déj / Dîner",kcal:560,prot:43,min:20,ing:["steak haché","riz","brocolis"],base:["sel","poivre"],steps:["Cuire riz + brocolis.","Poêler le steak, servir ensemble."]},
+  {id:"r13",n:"Omelette haricots verts",emoji:"🍳",cat:"Petit-déj",kcal:380,prot:26,min:12,ing:["œuf","haricots verts","fromage"],base:["sel","huile d'olive"],steps:["Faire revenir les haricots verts.","Verser les œufs battus, ajouter le fromage, plier."]},
+  {id:"r14",n:"Pâtes thon tomate",emoji:"🐟",cat:"Déj / Dîner",kcal:560,prot:38,min:20,ing:["pâtes","thon","sauce tomate"],base:["oignon","ail"],steps:["Cuire les pâtes.","Mélanger thon égoutté + sauce tomate chaude, servir."]},
+  {id:"r15",n:"Dahl riz lentilles",emoji:"🍛",cat:"Déj / Dîner",kcal:500,prot:24,min:30,ing:["riz","lentilles"],base:["oignon","ail","épices"],steps:["Cuire les lentilles avec oignon + épices.","Servir sur le riz."]},
+  {id:"r16",n:"Poulet pâtes tomate",emoji:"🍝",cat:"Déj / Dîner",kcal:600,prot:42,min:25,ing:["pâtes","poulet","sauce tomate"],base:["ail","oignon"],steps:["Cuire les pâtes. Saisir le poulet.","Ajouter la sauce tomate, mélanger."]},
+  {id:"r17",n:"Steak œuf à cheval + riz",emoji:"🍳",cat:"Déj / Dîner",kcal:620,prot:46,min:20,ing:["steak haché","œuf","riz"],base:["sel","huile d'olive"],steps:["Cuire le riz. Poêler le steak.","Faire un œuf au plat, poser sur le steak."]},
+  {id:"r18",n:"Poulet brocolis sauté soja",emoji:"🥦",cat:"Déj / Dîner",kcal:450,prot:44,min:20,ing:["poulet","brocolis"],base:["sauce soja","ail","huile d'olive"],steps:["Sauter le poulet en dés.","Ajouter brocolis + sauce soja, sauter 5 min."]},
+  {id:"r19",n:"Petits pois poulet crème",emoji:"🟢",cat:"Déj / Dîner",kcal:520,prot:40,min:25,ing:["petits pois","poulet","crème"],base:["oignon"],steps:["Saisir le poulet.","Ajouter petits pois + crème, mijoter 8 min."]},
+  {id:"r20",n:"Salade pâtes thon",emoji:"🥗",cat:"Déj / Dîner",kcal:520,prot:32,min:15,ing:["pâtes","thon","œuf","petits pois"],base:["moutarde","huile d'olive"],steps:["Cuire pâtes + œufs durs, refroidir.","Mélanger avec thon, petits pois, vinaigrette."]},
+  {id:"r21",n:"Gnocchis brocolis parmesan",emoji:"🥦",cat:"Déj / Dîner",kcal:540,prot:24,min:20,ing:["gnocchis","brocolis","parmesan"],base:["ail","beurre"],steps:["Poêler les gnocchis.","Ajouter brocolis cuit + parmesan."]},
+  {id:"r22",n:"Lentilles œuf tomate",emoji:"🍳",cat:"Déj / Dîner",kcal:450,prot:28,min:25,ing:["lentilles","œuf","sauce tomate"],base:["oignon","ail"],steps:["Cuire les lentilles avec sauce tomate + oignon.","Ajouter des œufs au plat dessus."]},
+  {id:"r23",n:"Poulet haricots verts riz",emoji:"🍗",cat:"Déj / Dîner",kcal:540,prot:45,min:25,ing:["poulet","haricots verts","riz"],base:["ail","huile d'olive"],steps:["Cuire riz + haricots verts.","Saisir le poulet, servir ensemble."]},
+  {id:"r24",n:"Thon riz petits pois",emoji:"🐟",cat:"Déj / Dîner",kcal:500,prot:34,min:15,ing:["thon","riz","petits pois"],base:["oignon","huile d'olive"],steps:["Cuire le riz.","Mélanger thon + petits pois, assaisonner."]},
+  {id:"r25",n:"Porridge banane",emoji:"🥣",cat:"Petit-déj",kcal:420,prot:18,min:10,ing:["avoine","banane","lait"],base:["miel"],steps:["Cuire l'avoine dans le lait 3-4 min.","Ajouter banane écrasée + miel."]},
+  {id:"r26",n:"Pancakes banane-œufs",emoji:"🥞",cat:"Petit-déj",kcal:350,prot:20,min:15,ing:["banane","œuf","avoine"],base:["huile d'olive"],steps:["Écraser la banane, mélanger avec œufs + avoine mixée.","Cuire en petites galettes à la poêle."]},
+  {id:"r27",n:"Œufs durs + banane",emoji:"🥚",cat:"Collation",kcal:280,prot:16,min:10,ing:["œuf","banane"],base:[],steps:["Cuire 2-3 œufs durs (9 min).","Manger avec une banane."]},
+  {id:"r28",n:"Fromage blanc banane avoine",emoji:"🍌",cat:"Collation",kcal:350,prot:28,min:5,ing:["fromage blanc","banane","avoine"],base:["miel"],steps:["Mélanger fromage blanc + avoine.","Ajouter banane en rondelles + miel."]},
+  {id:"r29",n:"Omelette nature + banane",emoji:"🍳",cat:"Petit-déj",kcal:340,prot:24,min:10,ing:["œuf","banane"],base:["sel","huile d'olive"],steps:["Faire une omelette de 3 œufs.","Accompagner d'une banane."]},
+  {id:"r30",n:"Riz au lait protéiné",emoji:"🍚",cat:"Collation",kcal:400,prot:16,min:20,ing:["riz","lait","banane"],base:["miel"],steps:["Cuire le riz dans le lait.","Ajouter banane + miel."]}
+];
+let repasFridgeOn=false;
+function repasCustom(){return LS.get(K_RPCUSTOM,[])||[];}
+function repasAll(){return RECIPES.concat(repasCustom());}
+function repasGetFridge(){const v=LS.get(K_RPFRIDGE,null);if(v)return new Set(v);const def=["pâtes","poulet","steak haché","œuf","gnocchis","riz","banane","brocolis","haricots verts","petits pois","lentilles"];LS.set(K_RPFRIDGE,def);return new Set(def);}
+function repasSetFridge(s){LS.set(K_RPFRIDGE,[...s]);}
+function repasMaster(){const s=new Set();repasAll().forEach(r=>(r.ing||[]).forEach(i=>s.add(i)));return [...s].sort((a,b)=>a.localeCompare(b,"fr"));}
+function repasToggleFridge(){repasFridgeOn=!repasFridgeOn;const b=$("rpFridgeBtn");if(b)b.textContent="🧊 Mode frigo : "+(repasFridgeOn?"ON":"OFF");$("rpFridge").style.display=repasFridgeOn?"block":"none";renderRepas();}
+function repasClearFilters(){["rpProt","rpKcal","rpTime"].forEach(id=>{const e=$(id);if(e)e.value="";});const c=$("rpCat");if(c)c.value="";renderRepas();}
+function repasToggleIng(name){const s=repasGetFridge();if(s.has(name))s.delete(name);else s.add(name);repasSetFridge(s);renderRepas();}
+function repasAddToCourses(id){
+  const r=repasAll().find(x=>x.id===id);if(!r)return;
+  const owned=repasGetFridge();
+  const toBuy=repasFridgeOn?r.ing.filter(i=>!owned.has(i)):r.ing.slice();
+  if(!toBuy.length){flash("Tu as déjà tout ✅");return;}
+  const dish={id:"rp_"+uid(),emoji:r.emoji||"🍽️",name:r.n,ings:toBuy.map(n=>({n,q:1,u:"pc"}))};
+  dishes.push(dish);saveDishes();
+  if(!picked.includes(dish.id)){picked.push(dish.id);LS.set(K_PICK,picked);}
+  if(typeof renderDishes==="function")renderDishes();if(typeof renderPicker==="function")renderPicker();if(typeof renderShop==="function")renderShop();
+  flash("🛒 "+toBuy.length+" ingrédient(s) ajouté(s) aux Courses");
+}
+function repasDelCustom(id){const all=repasCustom().filter(r=>r.id!==id);LS.set(K_RPCUSTOM,all);renderRepas();flash("Recette supprimée");}
+function repasOpenAdd(){
+  openSheet(`<button class="close-x" onclick="closeSheet()">✕</button>
+    <h3>＋ Ajouter une recette</h3>
+    <label>Nom</label><input id="rc_n" type="text" placeholder="ex : Poulet curry riz">
+    <label>Catégorie</label><select id="rc_cat"><option>Déj / Dîner</option><option>Petit-déj</option><option>Collation</option></select>
+    <div class="row">
+      <div><label>Calories</label><input id="rc_kcal" type="number" inputmode="numeric" placeholder="550"></div>
+      <div><label>Protéines (g)</label><input id="rc_prot" type="number" inputmode="numeric" placeholder="40"></div>
+      <div><label>Temps (min)</label><input id="rc_min" type="number" inputmode="numeric" placeholder="20"></div>
+    </div>
+    <label>Ingrédients principaux (séparés par des virgules)</label><input id="rc_ing" type="text" placeholder="poulet, riz, brocolis">
+    <label>Préparation (optionnel, étapes séparées par un point)</label><input id="rc_steps" type="text" placeholder="Cuire le riz. Saisir le poulet.">
+    <button class="btn" style="margin-top:12px;" onclick="repasSaveCustom()">Enregistrer</button>`);
+}
+function repasSaveCustom(){
+  const n=($("rc_n").value||"").trim();if(!n){flash("Donne un nom 😉");return;}
+  const ing=($("rc_ing").value||"").split(",").map(s=>s.trim().toLowerCase()).filter(Boolean);
+  const steps=($("rc_steps").value||"").split(".").map(s=>s.trim()).filter(Boolean);
+  const r={id:"cx_"+uid(),n,emoji:"🍽️",cat:$("rc_cat").value,kcal:+$("rc_kcal").value||0,prot:+$("rc_prot").value||0,min:+$("rc_min").value||0,ing,base:[],steps,custom:true};
+  const all=repasCustom();all.push(r);LS.set(K_RPCUSTOM,all);
+  closeSheet();renderRepas();flash("Recette ajoutée ✓");
+}
+function renderRepas(){
+  const list0=$("rpList");if(!list0)return;
+  const owned=repasGetFridge();
+  // chips frigo
+  if(repasFridgeOn){
+    const box=$("rpFridge");
+    box.innerHTML=`<div class="sub" style="margin:0 0 6px;">Coche ce que tu as :</div><div style="display:flex;gap:6px;flex-wrap:wrap;">`+
+      repasMaster().map(i=>`<button class="rpchip${owned.has(i)?" on":""}" data-ing="${esc(i)}" style="background:${owned.has(i)?"linear-gradient(135deg,#C6A15B,#a9863f)":"var(--card2)"};color:${owned.has(i)?"#1a1200":"var(--muted)"};border:1px solid ${owned.has(i)?"#C6A15B":"var(--border)"};border-radius:999px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;">${esc(i)}</button>`).join("")+`</div>`;
+    box.querySelectorAll(".rpchip").forEach(c=>c.addEventListener("click",()=>repasToggleIng(c.dataset.ing)));
+  }
+  // filtres
+  const prot=+$("rpProt").value||0, kcal=+$("rpKcal").value||0, time=+$("rpTime").value||0, cat=$("rpCat").value;
+  let list=repasAll().filter(r=>(!prot||r.prot>=prot)&&(!kcal||r.kcal<=kcal)&&(!time||r.min<=time)&&(!cat||r.cat===cat));
+  list=list.map(r=>({r,miss:r.ing.filter(i=>!owned.has(i))}));
+  if(repasFridgeOn)list.sort((a,b)=>a.miss.length-b.miss.length||b.r.prot-a.r.prot);
+  else list.sort((a,b)=>b.r.prot-a.r.prot);
+  $("rpCount").textContent=list.length+" repas"+(repasFridgeOn?" · triés par réalisables":"");
+  if(!list.length){list0.innerHTML=`<div class="card"><div class="empty" style="padding:20px;">Aucun repas avec ces filtres. Assouplis-les ou ajoute une recette perso.</div></div>`;return;}
+  list0.innerHTML=list.map(({r,miss})=>{
+    const ingHtml=r.ing.map(i=>{const have=owned.has(i);return `<span style="color:${repasFridgeOn?(have?"#22c55e":"#ff8a80"):"var(--txt)"};">${esc(i)}${repasFridgeOn&&!have?" ✕":""}</span>`;}).join(", ");
+    const baseHtml=(r.base&&r.base.length)?`<div style="font-size:11px;color:var(--muted2);margin-top:3px;">+ placard : ${r.base.map(esc).join(", ")}</div>`:"";
+    const fridgeBadge=repasFridgeOn?(miss.length===0?`<span class="pill" style="background:#22c55e22;color:#22c55e;">✅ Réalisable</span>`:`<span class="pill" style="background:#ff8a8022;color:#ff8a80;">Manque ${miss.length} : ${miss.map(esc).join(", ")}</span>`):"";
+    const stepsHtml=(r.steps&&r.steps.length)?`<details style="margin-top:8px;"><summary style="cursor:pointer;font-size:12px;color:var(--gold-l);font-weight:700;list-style:none;">👨‍🍳 Préparation</summary><ol style="margin:6px 0 0 18px;font-size:12.5px;line-height:1.6;color:var(--muted);">${r.steps.map(s=>`<li>${esc(s)}</li>`).join("")}</ol></details>`:"";
+    return `<div class="card" style="padding:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+        <b style="font-size:15px;">${r.emoji||"🍽️"} ${esc(r.n)}</b>
+        ${r.custom?`<button onclick="repasDelCustom('${r.id}')" style="background:none;border:none;color:#ff8a80;font-size:14px;cursor:pointer;">🗑️</button>`:""}
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px;">
+        <span class="pill" style="background:#C6A15B22;color:var(--gold-l);">💪 ${r.prot} g prot</span>
+        <span class="pill" style="background:#3b82f622;color:#7fb0ff;">🔥 ${r.kcal} kcal</span>
+        <span class="pill" style="background:rgba(255,255,255,.06);color:var(--muted);">⏱️ ${r.min} min</span>
+        <span class="pill" style="background:rgba(255,255,255,.06);color:var(--muted);">${esc(r.cat)}</span>
+        ${fridgeBadge}
+      </div>
+      <div style="font-size:12.5px;line-height:1.5;margin-top:8px;">${ingHtml}</div>
+      ${baseHtml}
+      ${stepsHtml}
+      <button class="btn small gold" style="margin-top:10px;padding:7px 14px;" onclick="repasAddToCourses('${r.id}')">🛒 ${repasFridgeOn&&miss.length?"Ajouter le manquant aux Courses":"Ajouter aux Courses"}</button>
+    </div>`;
+  }).join("");
 }
 
 function renderProgram(){
